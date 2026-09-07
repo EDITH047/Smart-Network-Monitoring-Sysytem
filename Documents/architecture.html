@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Smart Network Monitoring System — Architecture & Design</title>
+<style>
+  :root { --bg: #f8f9fb; --card: #fff; --accent: #2563eb; --accent2: #7c3aed; --accent3: #059669;
+    --text: #1e293b; --muted: #64748b; --border: #e2e8f0; --radius: 12px; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; }
+  .container { max-width: 1100px; margin: 0 auto; padding: 32px 24px; }
+
+  /* Header */
+  .header { text-align: center; margin-bottom: 48px; }
+  .header h1 { font-size: 2rem; font-weight: 700; margin-bottom: 8px; }
+  .header p { color: var(--muted); font-size: 1.05rem; }
+  .badge-row { display: flex; gap: 10px; justify-content: center; margin-top: 16px; flex-wrap: wrap; }
+  .badge { padding: 5px 14px; border-radius: 20px; font-size: 0.82rem; font-weight: 600; }
+  .badge-java { background: #fef3c7; color: #92400e; }
+  .badge-mysql { background: #dbeafe; color: #1e40af; }
+  .badge-swing { background: #ede9fe; color: #5b21b6; }
+  .badge-jdbc { background: #d1fae5; color: #065f46; }
+
+  /* Tabs */
+  .tabs { display: flex; gap: 4px; background: var(--card); border-radius: var(--radius); padding: 4px;
+    border: 1px solid var(--border); margin-bottom: 32px; overflow-x: auto; }
+  .tab { padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 500; font-size: 0.92rem;
+    transition: all 0.2s; white-space: nowrap; border: none; background: none; color: var(--muted); }
+  .tab:hover { color: var(--text); background: var(--bg); }
+  .tab.active { background: var(--accent); color: #fff; }
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  /* Cards */
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 24px; margin-bottom: 20px; }
+  .card h2 { font-size: 1.2rem; margin-bottom: 12px; display: flex; align-items: center; gap: 10px; }
+  .card h3 { font-size: 1.05rem; margin: 16px 0 8px; color: var(--accent); }
+
+  /* Module grid */
+  .module-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; }
+  .module { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 20px; transition: box-shadow 0.2s; }
+  .module:hover { box-shadow: 0 4px 24px rgba(0,0,0,0.07); }
+  .module-icon { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center;
+    justify-content: center; font-size: 1.3rem; margin-bottom: 12px; }
+  .module h3 { font-size: 1.05rem; margin-bottom: 6px; }
+  .module p { color: var(--muted); font-size: 0.9rem; margin-bottom: 10px; }
+  .module ul { padding-left: 18px; font-size: 0.88rem; color: var(--text); }
+  .module ul li { margin-bottom: 4px; }
+  .mi-blue { background: #dbeafe; }
+  .mi-purple { background: #ede9fe; }
+  .mi-green { background: #d1fae5; }
+  .mi-orange { background: #ffedd5; }
+  .mi-red { background: #fee2e2; }
+  .mi-teal { background: #ccfbf1; }
+
+  /* Table */
+  table { width: 100%; border-collapse: collapse; font-size: 0.9rem; margin-top: 12px; }
+  th { background: var(--bg); text-align: left; padding: 10px 12px; font-weight: 600; border-bottom: 2px solid var(--border); }
+  td { padding: 10px 12px; border-bottom: 1px solid var(--border); }
+  td code { background: #f1f5f9; padding: 2px 6px; border-radius: 4px; font-size: 0.85rem; }
+
+  /* Architecture diagram */
+  .arch-diagram { background: #f1f5f9; border-radius: var(--radius); padding: 32px 24px; text-align: center;
+    margin: 16px 0; overflow-x: auto; }
+  .arch-layer { display: flex; justify-content: center; gap: 12px; margin: 8px 0; flex-wrap: wrap; }
+  .arch-box { padding: 10px 18px; border-radius: 8px; font-weight: 600; font-size: 0.88rem; min-width: 140px; text-align: center; }
+  .ab-ui { background: #7c3aed; color: #fff; }
+  .ab-ctrl { background: #2563eb; color: #fff; }
+  .ab-svc { background: #059669; color: #fff; }
+  .ab-dao { background: #d97706; color: #fff; }
+  .ab-db { background: #dc2626; color: #fff; }
+  .arch-arrow { color: var(--muted); font-size: 1.2rem; margin: 4px 0; }
+
+  /* Package tree */
+  .pkg-tree { font-family: 'Cascadia Code', 'Fira Code', monospace; font-size: 0.88rem; background: #1e293b;
+    color: #e2e8f0; padding: 24px; border-radius: var(--radius); overflow-x: auto; white-space: pre; line-height: 1.7; }
+  .pkg-tree .dir { color: #60a5fa; }
+  .pkg-tree .file { color: #a5b4fc; }
+  .pkg-tree .comment { color: #64748b; }
+
+  /* ER labels */
+  .er-table { display: inline-block; background: var(--card); border: 2px solid var(--accent); border-radius: 8px;
+    margin: 12px 8px; vertical-align: top; min-width: 220px; text-align: left; }
+  .er-table-name { background: var(--accent); color: #fff; padding: 8px 14px; font-weight: 700; font-size: 0.9rem; }
+  .er-table-body { padding: 8px 14px; font-size: 0.82rem; }
+  .er-table-body div { padding: 2px 0; display: flex; justify-content: space-between; gap: 16px; }
+  .er-pk { color: #d97706; font-weight: 700; }
+  .er-fk { color: #7c3aed; }
+
+  .flow-step { display: flex; align-items: center; gap: 12px; margin: 8px 0; }
+  .flow-num { width: 32px; height: 32px; border-radius: 50%; background: var(--accent); color: #fff;
+    display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.85rem; flex-shrink: 0; }
+  .flow-text { font-size: 0.92rem; }
+  .section-divider { border: none; border-top: 1px solid var(--border); margin: 24px 0; }
+</style>
+</head>
+<body>
+<div class="container">
+  <!-- Header -->
+  <div class="header">
+    <h1>Smart Network Monitoring, Security & Optimization System</h1>
+    <p>Complete Architecture & Design Document</p>
+    <div class="badge-row">
+      <span class="badge badge-java">Java SE</span>
+      <span class="badge badge-swing">Swing GUI</span>
+      <span class="badge badge-jdbc">JDBC</span>
+      <span class="badge badge-mysql">MySQL</span>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs" id="tabs">
+    <button class="tab active" data-tab="overview">Overview</button>
+    <button class="tab" data-tab="modules">Modules</button>
+    <button class="tab" data-tab="database">Database Schema</button>
+    <button class="tab" data-tab="classes">Class Structure</button>
+    <button class="tab" data-tab="flow">Data Flow</button>
+    <button class="tab" data-tab="tech">Tech Stack</button>
+  </div>
+
+  <!-- OVERVIEW PANEL -->
+  <div class="panel active" id="overview">
+    <div class="card">
+      <h2>System Architecture (Layered)</h2>
+      <div class="arch-diagram">
+        <div class="arch-layer"><div class="arch-box ab-ui">Presentation Layer<br><small>Java Swing GUI</small></div></div>
+        <div class="arch-arrow">▼</div>
+        <div class="arch-layer">
+          <div class="arch-box ab-ctrl">Controller Layer</div>
+        </div>
+        <div class="arch-arrow">▼</div>
+        <div class="arch-layer">
+          <div class="arch-box ab-svc">Network Monitor</div>
+          <div class="arch-box ab-svc">Security Engine</div>
+          <div class="arch-box ab-svc">Optimizer</div>
+          <div class="arch-box ab-svc">Alert Manager</div>
+        </div>
+        <div class="arch-arrow">▼</div>
+        <div class="arch-layer">
+          <div class="arch-box ab-dao">DAO Layer (JDBC)</div>
+        </div>
+        <div class="arch-arrow">▼</div>
+        <div class="arch-layer"><div class="arch-box ab-db">MySQL Database</div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Project Scope</h2>
+      <p>This system provides a unified dashboard for monitoring network devices, detecting security threats, managing bandwidth, and generating alerts. It follows a <strong>3-tier layered architecture</strong> — Presentation (Swing), Business Logic (Services), and Data Access (JDBC/MySQL).</p>
+      <h3>Key Capabilities</h3>
+      <table>
+        <tr><th>Area</th><th>What It Does</th></tr>
+        <tr><td><strong>Network Monitoring</strong></td><td>Track device status, bandwidth, latency, and packet stats in real time</td></tr>
+        <tr><td><strong>Security</strong></td><td>Detect intrusions, flag anomalies, manage firewall rules, log security events</td></tr>
+        <tr><td><strong>Optimization</strong></td><td>Analyze traffic patterns, recommend bandwidth allocation, QoS suggestions</td></tr>
+        <tr><td><strong>Alerts & Reports</strong></td><td>Threshold-based alerts, email notifications, exportable reports</td></tr>
+        <tr><td><strong>User Management</strong></td><td>Role-based access (Admin / Operator / Viewer) with login and audit logging</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <!-- MODULES PANEL -->
+  <div class="panel" id="modules">
+    <div class="module-grid">
+      <div class="module">
+        <div class="module-icon mi-blue">🔐</div>
+        <h3>1. User Authentication & Authorization</h3>
+        <p>Login, registration, role-based access control</p>
+        <ul>
+          <li>Login/Logout with session management</li>
+          <li>Password hashing (SHA-256)</li>
+          <li>Three roles: Admin, Operator, Viewer</li>
+          <li>Audit log for all login attempts</li>
+          <li>Profile management panel</li>
+        </ul>
+      </div>
+      <div class="module">
+        <div class="module-icon mi-teal">📡</div>
+        <h3>2. Network Device Management</h3>
+        <p>Register and track all network devices</p>
+        <ul>
+          <li>Add/Edit/Delete devices (routers, switches, servers)</li>
+          <li>Store IP address, MAC, location, type</li>
+          <li>Device status tracking (Online/Offline/Warning)</li>
+          <li>Device grouping by location/type</li>
+          <li>JDBC CRUD operations on device table</li>
+        </ul>
+      </div>
+      <div class="module">
+        <div class="module-icon mi-green">📊</div>
+        <h3>3. Real-Time Network Monitoring</h3>
+        <p>Live dashboard with bandwidth, latency, and packet stats</p>
+        <ul>
+          <li>Dashboard with live stats (simulated data or ping)</li>
+          <li>Bandwidth usage per device</li>
+          <li>Latency and packet loss tracking</li>
+          <li>Historical data charts (JFreeChart)</li>
+          <li>Auto-refresh with SwingWorker/Timer</li>
+        </ul>
+      </div>
+      <div class="module">
+        <div class="module-icon mi-red">🛡️</div>
+        <h3>4. Security Threat Detection</h3>
+        <p>Detect anomalies and log security events</p>
+        <ul>
+          <li>Rule-based intrusion detection</li>
+          <li>Anomaly detection (unusual traffic spikes)</li>
+          <li>Security event logging with severity levels</li>
+          <li>Blocked IP management</li>
+          <li>Threat type classification (DDoS, Brute Force, Port Scan)</li>
+        </ul>
+      </div>
+      <div class="module">
+        <div class="module-icon mi-purple">🔥</div>
+        <h3>5. Firewall Rule Management</h3>
+        <p>Configure and manage firewall rules</p>
+        <ul>
+          <li>Add/Edit/Delete firewall rules</li>
+          <li>Rule priority ordering</li>
+          <li>Allow/Block/Rate-Limit actions</li>
+          <li>Protocol and port-based filtering</li>
+          <li>Rule activation/deactivation toggle</li>
+        </ul>
+      </div>
+      <div class="module">
+        <div class="module-icon mi-orange">⚡</div>
+        <h3>6. Network Optimization</h3>
+        <p>Analyze and optimize network performance</p>
+        <ul>
+          <li>Traffic pattern analysis</li>
+          <li>Bandwidth allocation recommendations</li>
+          <li>QoS (Quality of Service) configuration</li>
+          <li>Peak usage time identification</li>
+          <li>Optimization score per device</li>
+        </ul>
+      </div>
+      <div class="module">
+        <div class="module-icon mi-red">🔔</div>
+        <h3>7. Alert & Notification System</h3>
+        <p>Threshold-based alerts with notification delivery</p>
+        <ul>
+          <li>Configurable alert thresholds</li>
+          <li>Alert severity: Info / Warning / Critical</li>
+          <li>In-app notification panel</li>
+          <li>Alert history and acknowledgement</li>
+          <li>Dashboard alert counter badge</li>
+        </ul>
+      </div>
+      <div class="module">
+        <div class="module-icon mi-blue">📈</div>
+        <h3>8. Reports & Analytics</h3>
+        <p>Generate and export system reports</p>
+        <ul>
+          <li>Network health summary report</li>
+          <li>Security incident report</li>
+          <li>Bandwidth usage over time</li>
+          <li>Filter by date range, device, severity</li>
+          <li>Export to CSV from Swing JTable</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- DATABASE PANEL -->
+  <div class="panel" id="database">
+    <div class="card">
+      <h2>Entity Relationship Overview</h2>
+      <p>The database has 9 core tables. Below is the full schema with data types and relationships.</p>
+      <div style="text-align:center; overflow-x:auto; padding: 16px 0;">
+        <div class="er-table">
+          <div class="er-table-name">users</div>
+          <div class="er-table-body">
+            <div><span class="er-pk">PK</span> user_id INT AUTO_INCREMENT</div>
+            <div>username VARCHAR(50) UNIQUE</div>
+            <div>password_hash VARCHAR(255)</div>
+            <div>full_name VARCHAR(100)</div>
+            <div>email VARCHAR(100)</div>
+            <div>role ENUM('ADMIN','OPERATOR','VIEWER')</div>
+            <div>is_active BOOLEAN DEFAULT TRUE</div>
+            <div>created_at TIMESTAMP</div>
+            <div>last_login TIMESTAMP</div>
+          </div>
+        </div>
+        <div class="er-table">
+          <div class="er-table-name">devices</div>
+          <div class="er-table-body">
+            <div><span class="er-pk">PK</span> device_id INT AUTO_INCREMENT</div>
+            <div>device_name VARCHAR(100)</div>
+            <div>ip_address VARCHAR(45)</div>
+            <div>mac_address VARCHAR(17)</div>
+            <div>device_type ENUM('ROUTER','SWITCH','SERVER','AP','FIREWALL')</div>
+            <div>location VARCHAR(100)</div>
+            <div>status ENUM('ONLINE','OFFLINE','WARNING')</div>
+            <div>added_by INT <span class="er-fk">FK→users</span></div>
+            <div>created_at TIMESTAMP</div>
+          </div>
+        </div>
+        <div class="er-table">
+          <div class="er-table-name">network_metrics</div>
+          <div class="er-table-body">
+            <div><span class="er-pk">PK</span> metric_id INT AUTO_INCREMENT</div>
+            <div><span class="er-fk">FK</span> device_id INT→devices</div>
+            <div>bandwidth_usage DOUBLE</div>
+            <div>latency_ms DOUBLE</div>
+            <div>packet_loss_pct DOUBLE</div>
+            <div>packets_in BIGINT</div>
+            <div>packets_out BIGINT</div>
+            <div>recorded_at TIMESTAMP</div>
+          </div>
+        </div>
+        <div class="er-table">
+          <div class="er-table-name">security_events</div>
+          <div class="er-table-body">
+            <div><span class="er-pk">PK</span> event_id INT AUTO_INCREMENT</div>
+            <div><span class="er-fk">FK</span> device_id INT→devices</div>
+            <div>event_type ENUM('DDoS','BRUTE_FORCE','PORT_SCAN','MALWARE','UNAUTHORIZED')</div>
+            <div>severity ENUM('LOW','MEDIUM','HIGH','CRITICAL')</div>
+            <div>source_ip VARCHAR(45)</div>
+            <div>description TEXT</div>
+            <div>is_resolved BOOLEAN</div>
+            <div>detected_at TIMESTAMP</div>
+            <div>resolved_at TIMESTAMP</div>
+          </div>
+        </div>
+        <div class="er-table">
+          <div class="er-table-name">firewall_rules</div>
+          <div class="er-table-body">
+            <div><span class="er-pk">PK</span> rule_id INT AUTO_INCREMENT</div>
+            <div>rule_name VARCHAR(100)</div>
+            <div>source_ip VARCHAR(45)</div>
+            <div>dest_ip VARCHAR(45)</div>
+            <div>port INT</div>
+            <div>protocol ENUM('TCP','UDP','ICMP','ALL')</div>
+            <div>action ENUM('ALLOW','BLOCK','RATE_LIMIT')</div>
+            <div>priority INT</div>
+            <div>is_active BOOLEAN</div>
+            <div>created_by INT <span class="er-fk">FK→users</span></div>
+            <div>created_at TIMESTAMP</div>
+          </div>
+        </div>
+        <div class="er-table">
+          <div class="er-table-name">alerts</div>
+          <div class="er-table-body">
+            <div><span class="er-pk">PK</span> alert_id INT AUTO_INCREMENT</div>
+            <div><span class="er-fk">FK</span> device_id INT→devices</div>
+            <div>alert_type VARCHAR(50)</div>
+            <div>severity ENUM('INFO','WARNING','CRITICAL')</div>
+            <div>message TEXT</div>
+            <div>is_acknowledged BOOLEAN</div>
+            <div>created_at TIMESTAMP</div>
+            <div>acknowledged_by INT <span class="er-fk">FK→users</span></div>
+          </div>
+        </div>
+        <div class="er-table">
+          <div class="er-table-name">optimization_results</div>
+          <div class="er-table-body">
+            <div><span class="er-pk">PK</span> result_id INT AUTO_INCREMENT</div>
+            <div><span class="er-fk">FK</span> device_id INT→devices</div>
+            <div>current_bandwidth DOUBLE</div>
+            <div>recommended_bandwidth DOUBLE</div>
+            <div>optimization_score INT</div>
+            <div>suggestion TEXT</div>
+            <div>analyzed_at TIMESTAMP</div>
+          </div>
+        </div>
+        <div class="er-table">
+          <div class="er-table-name">blocked_ips</div>
+          <div class="er-table-body">
+            <div><span class="er-pk">PK</span> block_id INT AUTO_INCREMENT</div>
+            <div>ip_address VARCHAR(45)</div>
+            <div>reason VARCHAR(255)</div>
+            <div>blocked_by INT <span class="er-fk">FK→users</span></div>
+            <div>blocked_at TIMESTAMP</div>
+            <div>expires_at TIMESTAMP</div>
+            <div>is_permanent BOOLEAN</div>
+          </div>
+        </div>
+        <div class="er-table">
+          <div class="er-table-name">audit_log</div>
+          <div class="er-table-body">
+            <div><span class="er-pk">PK</span> log_id INT AUTO_INCREMENT</div>
+            <div><span class="er-fk">FK</span> user_id INT→users</div>
+            <div>action VARCHAR(100)</div>
+            <div>details TEXT</div>
+            <div>ip_address VARCHAR(45)</div>
+            <div>performed_at TIMESTAMP</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Key Relationships</h2>
+      <table>
+        <tr><th>From Table</th><th>FK Column</th><th>References</th><th>Relationship</th></tr>
+        <tr><td>devices</td><td><code>added_by</code></td><td>users.user_id</td><td>Many devices → one user</td></tr>
+        <tr><td>network_metrics</td><td><code>device_id</code></td><td>devices.device_id</td><td>Many metrics → one device</td></tr>
+        <tr><td>security_events</td><td><code>device_id</code></td><td>devices.device_id</td><td>Many events → one device</td></tr>
+        <tr><td>firewall_rules</td><td><code>created_by</code></td><td>users.user_id</td><td>Many rules → one user</td></tr>
+        <tr><td>alerts</td><td><code>device_id</code></td><td>devices.device_id</td><td>Many alerts → one device</td></tr>
+        <tr><td>alerts</td><td><code>acknowledged_by</code></td><td>users.user_id</td><td>Many alerts → one user</td></tr>
+        <tr><td>optimization_results</td><td><code>device_id</code></td><td>devices.device_id</td><td>Many results → one device</td></tr>
+        <tr><td>blocked_ips</td><td><code>blocked_by</code></td><td>users.user_id</td><td>Many blocks → one user</td></tr>
+        <tr><td>audit_log</td><td><code>user_id</code></td><td>users.user_id</td><td>Many logs → one user</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <!-- CLASS STRUCTURE PANEL -->
+  <div class="panel" id="classes">
+    <div class="card">
+      <h2>Package Structure</h2>
+      <div class="pkg-tree"><span class="dir">com.networkmonitor/</span>
+├── <span class="dir">main/</span>
+│   └── <span class="file">MainApp.java</span>                <span class="comment">// Entry point, launches login</span>
+│
+├── <span class="dir">config/</span>
+│   └── <span class="file">DatabaseConfig.java</span>         <span class="comment">// JDBC connection manager (singleton)</span>
+│
+├── <span class="dir">model/</span>                           <span class="comment">// POJOs / Entity classes</span>
+│   ├── <span class="file">User.java</span>
+│   ├── <span class="file">Device.java</span>
+│   ├── <span class="file">NetworkMetric.java</span>
+│   ├── <span class="file">SecurityEvent.java</span>
+│   ├── <span class="file">FirewallRule.java</span>
+│   ├── <span class="file">Alert.java</span>
+│   ├── <span class="file">OptimizationResult.java</span>
+│   ├── <span class="file">BlockedIP.java</span>
+│   └── <span class="file">AuditLog.java</span>
+│
+├── <span class="dir">dao/</span>                             <span class="comment">// Data Access Objects (JDBC)</span>
+│   ├── <span class="file">UserDAO.java</span>
+│   ├── <span class="file">DeviceDAO.java</span>
+│   ├── <span class="file">NetworkMetricDAO.java</span>
+│   ├── <span class="file">SecurityEventDAO.java</span>
+│   ├── <span class="file">FirewallRuleDAO.java</span>
+│   ├── <span class="file">AlertDAO.java</span>
+│   ├── <span class="file">OptimizationDAO.java</span>
+│   ├── <span class="file">BlockedIPDAO.java</span>
+│   └── <span class="file">AuditLogDAO.java</span>
+│
+├── <span class="dir">service/</span>                         <span class="comment">// Business logic</span>
+│   ├── <span class="file">AuthService.java</span>            <span class="comment">// Login, password hashing, session</span>
+│   ├── <span class="file">MonitoringService.java</span>      <span class="comment">// Collect & analyze metrics</span>
+│   ├── <span class="file">SecurityService.java</span>        <span class="comment">// Threat detection engine</span>
+│   ├── <span class="file">FirewallService.java</span>        <span class="comment">// Firewall rule logic</span>
+│   ├── <span class="file">OptimizationService.java</span>    <span class="comment">// Bandwidth analysis</span>
+│   ├── <span class="file">AlertService.java</span>           <span class="comment">// Threshold checks & alerts</span>
+│   └── <span class="file">ReportService.java</span>          <span class="comment">// Generate reports & CSV</span>
+│
+├── <span class="dir">ui/</span>                              <span class="comment">// Swing GUI</span>
+│   ├── <span class="file">LoginFrame.java</span>
+│   ├── <span class="file">MainDashboard.java</span>          <span class="comment">// JTabbedPane container</span>
+│   ├── <span class="file">DevicePanel.java</span>
+│   ├── <span class="file">MonitoringPanel.java</span>
+│   ├── <span class="file">SecurityPanel.java</span>
+│   ├── <span class="file">FirewallPanel.java</span>
+│   ├── <span class="file">OptimizationPanel.java</span>
+│   ├── <span class="file">AlertPanel.java</span>
+│   ├── <span class="file">ReportPanel.java</span>
+│   └── <span class="file">UserManagementPanel.java</span>   <span class="comment">// Admin only</span>
+│
+└── <span class="dir">util/</span>                            <span class="comment">// Helpers</span>
+    ├── <span class="file">PasswordUtil.java</span>           <span class="comment">// SHA-256 hashing</span>
+    ├── <span class="file">DateUtil.java</span>               <span class="comment">// Timestamp formatting</span>
+    ├── <span class="file">ValidationUtil.java</span>         <span class="comment">// IP, email, input validation</span>
+    └── <span class="file">CSVExporter.java</span>            <span class="comment">// Export JTable data to CSV</span></div>
+    </div>
+
+    <div class="card">
+      <h2>Key Class Responsibilities</h2>
+      <table>
+        <tr><th>Class</th><th>Layer</th><th>Responsibility</th></tr>
+        <tr><td><code>DatabaseConfig</code></td><td>Config</td><td>Singleton that manages JDBC Connection. Uses <code>DriverManager.getConnection(url, user, pass)</code>. Provides <code>getConnection()</code> to all DAOs.</td></tr>
+        <tr><td><code>UserDAO</code></td><td>DAO</td><td>PreparedStatement queries: <code>insertUser()</code>, <code>findByUsername()</code>, <code>updateLastLogin()</code>, <code>getAllUsers()</code>, <code>deactivateUser()</code></td></tr>
+        <tr><td><code>DeviceDAO</code></td><td>DAO</td><td><code>addDevice()</code>, <code>updateDevice()</code>, <code>deleteDevice()</code>, <code>getByStatus()</code>, <code>getAllDevices()</code></td></tr>
+        <tr><td><code>NetworkMetricDAO</code></td><td>DAO</td><td><code>insertMetric()</code>, <code>getMetricsByDevice()</code>, <code>getLatestMetrics()</code>, <code>getMetricsByDateRange()</code></td></tr>
+        <tr><td><code>AuthService</code></td><td>Service</td><td>Validates credentials using <code>PasswordUtil.hash()</code>, manages logged-in user session, enforces role permissions</td></tr>
+        <tr><td><code>MonitoringService</code></td><td>Service</td><td>Periodically collects metrics (simulated or via ping), stores via DAO, checks thresholds, triggers AlertService</td></tr>
+        <tr><td><code>SecurityService</code></td><td>Service</td><td>Analyzes metrics for anomalies (high packet rates, repeated failures), creates SecurityEvent records, auto-blocks suspicious IPs</td></tr>
+        <tr><td><code>MainDashboard</code></td><td>UI</td><td>JFrame with JTabbedPane — each tab loads a panel. Shows alert badge, logged-in user info, logout button.</td></tr>
+        <tr><td><code>MonitoringPanel</code></td><td>UI</td><td>JTable for device metrics, refresh button, chart area (JFreeChart), auto-refresh with javax.swing.Timer</td></tr>
+      </table>
+    </div>
+
+    <div class="card">
+      <h2>Design Patterns Used</h2>
+      <table>
+        <tr><th>Pattern</th><th>Where</th><th>Why</th></tr>
+        <tr><td><strong>Singleton</strong></td><td>DatabaseConfig</td><td>Single JDBC connection pool managed centrally</td></tr>
+        <tr><td><strong>DAO</strong></td><td>All DAO classes</td><td>Separates SQL/JDBC code from business logic — key for JDBC projects</td></tr>
+        <tr><td><strong>MVC</strong></td><td>UI ↔ Service ↔ DAO</td><td>Swing panels (View), Services (Controller), DAOs (Model access)</td></tr>
+        <tr><td><strong>Observer</strong></td><td>AlertService → UI panels</td><td>Panels refresh when new alerts arrive</td></tr>
+        <tr><td><strong>Strategy</strong></td><td>SecurityService</td><td>Different detection algorithms for different threat types</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <!-- DATA FLOW PANEL -->
+  <div class="panel" id="flow">
+    <div class="card">
+      <h2>How Data Flows Through the System</h2>
+
+      <h3>1. User Login Flow</h3>
+      <div class="flow-step"><div class="flow-num">1</div><div class="flow-text">User enters credentials in <strong>LoginFrame</strong></div></div>
+      <div class="flow-step"><div class="flow-num">2</div><div class="flow-text"><strong>AuthService.login()</strong> hashes password using PasswordUtil</div></div>
+      <div class="flow-step"><div class="flow-num">3</div><div class="flow-text"><strong>UserDAO.findByUsername()</strong> runs PreparedStatement against MySQL</div></div>
+      <div class="flow-step"><div class="flow-num">4</div><div class="flow-text">If matched → set session, log to <strong>audit_log</strong>, open <strong>MainDashboard</strong></div></div>
+      <div class="flow-step"><div class="flow-num">5</div><div class="flow-text">Dashboard tabs restricted based on user role (ADMIN sees all, VIEWER sees read-only)</div></div>
+
+      <hr class="section-divider">
+
+      <h3>2. Network Monitoring Flow</h3>
+      <div class="flow-step"><div class="flow-num">1</div><div class="flow-text"><strong>javax.swing.Timer</strong> triggers every N seconds in MonitoringPanel</div></div>
+      <div class="flow-step"><div class="flow-num">2</div><div class="flow-text"><strong>MonitoringService.collectMetrics()</strong> gathers data (simulated random + InetAddress.isReachable)</div></div>
+      <div class="flow-step"><div class="flow-num">3</div><div class="flow-text"><strong>NetworkMetricDAO.insertMetric()</strong> persists to MySQL via JDBC PreparedStatement</div></div>
+      <div class="flow-step"><div class="flow-num">4</div><div class="flow-text"><strong>AlertService.checkThresholds()</strong> evaluates if bandwidth > 90%, latency > 200ms, etc.</div></div>
+      <div class="flow-step"><div class="flow-num">5</div><div class="flow-text">If threshold breached → insert into <strong>alerts</strong> table, update alert badge on dashboard</div></div>
+      <div class="flow-step"><div class="flow-num">6</div><div class="flow-text"><strong>MonitoringPanel</strong> JTable refreshes with new data, chart redraws</div></div>
+
+      <hr class="section-divider">
+
+      <h3>3. Security Threat Detection Flow</h3>
+      <div class="flow-step"><div class="flow-num">1</div><div class="flow-text">Each new metric is also passed to <strong>SecurityService.analyze()</strong></div></div>
+      <div class="flow-step"><div class="flow-num">2</div><div class="flow-text">Checks: packet rate spike (DDoS), repeated failed connections (Brute Force), unusual port access (Port Scan)</div></div>
+      <div class="flow-step"><div class="flow-num">3</div><div class="flow-text">If threat detected → <strong>SecurityEventDAO.insertEvent()</strong> with type, severity, source IP</div></div>
+      <div class="flow-step"><div class="flow-num">4</div><div class="flow-text">Critical threats auto-add source IP to <strong>blocked_ips</strong> via BlockedIPDAO</div></div>
+      <div class="flow-step"><div class="flow-num">5</div><div class="flow-text"><strong>SecurityPanel</strong> table updates, <strong>AlertPanel</strong> shows CRITICAL notification</div></div>
+
+      <hr class="section-divider">
+
+      <h3>4. Optimization Analysis Flow</h3>
+      <div class="flow-step"><div class="flow-num">1</div><div class="flow-text">User clicks "Run Optimization" on <strong>OptimizationPanel</strong></div></div>
+      <div class="flow-step"><div class="flow-num">2</div><div class="flow-text"><strong>OptimizationService.analyze()</strong> queries last 24 hrs of metrics per device</div></div>
+      <div class="flow-step"><div class="flow-num">3</div><div class="flow-text">Calculates avg usage, peak times, underutilized vs overutilized devices</div></div>
+      <div class="flow-step"><div class="flow-num">4</div><div class="flow-text">Generates recommendations: "Reallocate 20Mbps from Device A to Device B"</div></div>
+      <div class="flow-step"><div class="flow-num">5</div><div class="flow-text">Saves to <strong>optimization_results</strong> table with score (0–100)</div></div>
+    </div>
+
+    <div class="card">
+      <h2>JDBC Usage Throughout</h2>
+      <p>Every database interaction uses <strong>JDBC PreparedStatement</strong> to prevent SQL injection. The pattern across all DAOs:</p>
+      <div class="pkg-tree"><span class="comment">// Typical DAO method pattern</span>
+<span class="dir">public</span> List&lt;Device&gt; <span class="file">getAllDevices</span>() {
+    String sql = "SELECT * FROM devices ORDER BY device_name";
+    List&lt;Device&gt; devices = new ArrayList&lt;&gt;();
+
+    <span class="dir">try</span> (Connection conn = DatabaseConfig.getConnection();
+         PreparedStatement ps = conn.prepareStatement(sql);
+         ResultSet rs = ps.executeQuery()) {
+
+        <span class="dir">while</span> (rs.next()) {
+            Device d = new Device();
+            d.setDeviceId(rs.getInt("device_id"));
+            d.setDeviceName(rs.getString("device_name"));
+            d.setIpAddress(rs.getString("ip_address"));
+            <span class="comment">// ... map remaining columns</span>
+            devices.add(d);
+        }
+    } <span class="dir">catch</span> (SQLException e) {
+        e.printStackTrace();
+    }
+    <span class="dir">return</span> devices;
+}</div>
+    </div>
+  </div>
+
+  <!-- TECH STACK PANEL -->
+  <div class="panel" id="tech">
+    <div class="card">
+      <h2>Technology Stack</h2>
+      <table>
+        <tr><th>Component</th><th>Technology</th><th>Purpose</th></tr>
+        <tr><td>Language</td><td>Java SE 17+</td><td>Core programming language</td></tr>
+        <tr><td>GUI Framework</td><td>Java Swing (AWT)</td><td>Desktop UI with JFrame, JPanel, JTable, JTabbedPane</td></tr>
+        <tr><td>Database</td><td>MySQL 8.0</td><td>Relational data storage</td></tr>
+        <tr><td>DB Connectivity</td><td>JDBC (mysql-connector-java)</td><td>Database operations using PreparedStatement</td></tr>
+        <tr><td>Charting</td><td>JFreeChart (optional)</td><td>Bandwidth and latency graphs</td></tr>
+        <tr><td>Password Security</td><td>java.security.MessageDigest (SHA-256)</td><td>Hash passwords before storage</td></tr>
+        <tr><td>Networking</td><td>java.net.InetAddress</td><td>Ping/reachability checks for devices</td></tr>
+        <tr><td>Concurrency</td><td>SwingWorker + javax.swing.Timer</td><td>Background metric collection without freezing UI</td></tr>
+        <tr><td>Build Tool</td><td>Manual / IDE (Eclipse/IntelliJ)</td><td>Compile and run</td></tr>
+        <tr><td>IDE</td><td>IntelliJ IDEA / Eclipse / NetBeans</td><td>Development environment</td></tr>
+      </table>
+    </div>
+
+    <div class="card">
+      <h2>Prerequisites to Run</h2>
+      <table>
+        <tr><th>#</th><th>Requirement</th><th>Details</th></tr>
+        <tr><td>1</td><td>JDK 17+</td><td>Download from Oracle or use OpenJDK</td></tr>
+        <tr><td>2</td><td>MySQL Server 8.0</td><td>Install and create a database called <code>network_monitor_db</code></td></tr>
+        <tr><td>3</td><td>MySQL Connector/J</td><td>Add <code>mysql-connector-java-8.x.jar</code> to project classpath</td></tr>
+        <tr><td>4</td><td>JFreeChart (optional)</td><td>Add <code>jfreechart-1.5.x.jar</code> + <code>jcommon-1.0.x.jar</code> for charts</td></tr>
+        <tr><td>5</td><td>IDE</td><td>Any Java IDE — IntelliJ, Eclipse, or NetBeans</td></tr>
+      </table>
+    </div>
+
+    <div class="card">
+      <h2>Database Connection Setup</h2>
+      <div class="pkg-tree"><span class="comment">// DatabaseConfig.java — Singleton JDBC Connection Manager</span>
+
+<span class="dir">public class</span> <span class="file">DatabaseConfig</span> {
+    <span class="dir">private static final</span> String URL = "jdbc:mysql://localhost:3306/network_monitor_db";
+    <span class="dir">private static final</span> String USER = "root";
+    <span class="dir">private static final</span> String PASSWORD = "your_password";
+
+    <span class="dir">private static</span> Connection connection;
+
+    <span class="dir">public static</span> Connection <span class="file">getConnection</span>() <span class="dir">throws</span> SQLException {
+        <span class="dir">if</span> (connection == null || connection.isClosed()) {
+            <span class="dir">try</span> {
+                Class.forName("com.mysql.cj.jdbc.Driver");
+                connection = DriverManager.getConnection(URL, USER, PASSWORD);
+            } <span class="dir">catch</span> (ClassNotFoundException e) {
+                <span class="dir">throw new</span> SQLException("MySQL Driver not found", e);
+            }
+        }
+        <span class="dir">return</span> connection;
+    }
+
+    <span class="dir">public static void</span> <span class="file">closeConnection</span>() {
+        <span class="dir">try</span> { <span class="dir">if</span> (connection != null) connection.close(); }
+        <span class="dir">catch</span> (SQLException e) { e.printStackTrace(); }
+    }
+}</div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  // Tab switching
+  document.getElementById('tabs').addEventListener('click', function(e) {
+    if (!e.target.classList.contains('tab')) return;
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    e.target.classList.add('active');
+    document.getElementById(e.target.dataset.tab).classList.add('active');
+  });
+</script>
+</body>
+</html>

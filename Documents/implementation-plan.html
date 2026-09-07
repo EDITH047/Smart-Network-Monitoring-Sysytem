@@ -1,0 +1,1123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Implementation Plan — Smart Network Monitoring System</title>
+<style>
+  :root { color-scheme: light; --bg: #f5f6f8; --card: #fff; --accent: #2563eb; --accent2: #7c3aed;
+    --accent3: #059669; --accent4: #d97706; --accent5: #dc2626; --text: #1e293b; --muted: #64748b;
+    --border: #e2e8f0; --radius: 14px; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: var(--bg);
+    color: var(--text); line-height: 1.65; }
+  .container { max-width: 1180px; margin: 0 auto; padding: 36px 24px 60px; }
+
+  /* Header */
+  .header { text-align: center; margin-bottom: 44px; padding-bottom: 28px; border-bottom: 1px solid var(--border); }
+  .header h1 { font-size: 2rem; font-weight: 800; letter-spacing: -0.5px; margin-bottom: 6px; }
+  .header .sub { color: var(--muted); font-size: 1.05rem; }
+  .badges { display: flex; gap: 8px; justify-content: center; margin-top: 14px; flex-wrap: wrap; }
+  .badge { padding: 4px 14px; border-radius: 20px; font-size: 0.8rem; font-weight: 600; }
+  .b1 { background: #dbeafe; color: #1e40af; } .b2 { background: #ede9fe; color: #5b21b6; }
+  .b3 { background: #d1fae5; color: #065f46; } .b4 { background: #fef3c7; color: #92400e; }
+
+  /* Navigation tabs */
+  .nav { display: flex; gap: 4px; background: var(--card); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 4px; margin-bottom: 32px; overflow-x: auto; }
+  .nav button { padding: 10px 18px; border: none; background: none; border-radius: 10px; cursor: pointer;
+    font-weight: 600; font-size: 0.88rem; color: var(--muted); white-space: nowrap; transition: all 0.2s; }
+  .nav button:hover { color: var(--text); background: var(--bg); }
+  .nav button.on { background: var(--accent); color: #fff; }
+  .pane { display: none; } .pane.on { display: block; }
+
+  /* Card */
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 28px; margin-bottom: 20px; }
+  .card h2 { font-size: 1.25rem; margin-bottom: 14px; display: flex; align-items: center; gap: 10px; }
+  .card h3 { font-size: 1.05rem; color: var(--accent); margin: 20px 0 8px; }
+  .card p { margin-bottom: 10px; }
+  .card hr { border: none; border-top: 1px solid var(--border); margin: 20px 0; }
+
+  /* Tables */
+  table { width: 100%; border-collapse: collapse; font-size: 0.9rem; margin-top: 10px; }
+  th { background: var(--bg); text-align: left; padding: 10px 12px; font-weight: 700;
+    border-bottom: 2px solid var(--border); font-size: 0.85rem; text-transform: uppercase;
+    letter-spacing: 0.3px; color: var(--muted); }
+  td { padding: 10px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  td code { background: #f1f5f9; padding: 2px 7px; border-radius: 4px; font-size: 0.84rem; }
+  tr:hover td { background: #f8fafc; }
+
+  /* Phase cards */
+  .phase { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+    margin-bottom: 20px; overflow: hidden; }
+  .phase-head { padding: 18px 24px; display: flex; align-items: center; gap: 14px; cursor: pointer;
+    user-select: none; }
+  .phase-head:hover { background: #f8fafc; }
+  .phase-num { width: 42px; height: 42px; border-radius: 12px; display: flex; align-items: center;
+    justify-content: center; font-weight: 800; font-size: 1.1rem; color: #fff; flex-shrink: 0; }
+  .pn1 { background: var(--accent); } .pn2 { background: var(--accent2); }
+  .pn3 { background: var(--accent3); } .pn4 { background: var(--accent4); }
+  .pn5 { background: var(--accent5); } .pn6 { background: #0891b2; }
+  .pn7 { background: #6d28d9; }
+  .phase-title { flex: 1; }
+  .phase-title h3 { font-size: 1.1rem; margin: 0; color: var(--text); }
+  .phase-title small { color: var(--muted); font-size: 0.85rem; }
+  .phase-chevron { font-size: 1.2rem; color: var(--muted); transition: transform 0.2s; }
+  .phase.open .phase-chevron { transform: rotate(90deg); }
+  .phase-body { display: none; padding: 0 24px 24px; border-top: 1px solid var(--border); }
+  .phase.open .phase-body { display: block; padding-top: 20px; }
+
+  /* Task list inside phase */
+  .task-row { display: flex; gap: 12px; padding: 10px 0; border-bottom: 1px solid #f1f5f9; align-items: flex-start; }
+  .task-row:last-child { border-bottom: none; }
+  .task-num { background: var(--bg); color: var(--accent); font-weight: 700; font-size: 0.82rem;
+    width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center;
+    justify-content: center; flex-shrink: 0; margin-top: 2px; }
+  .task-info { flex: 1; }
+  .task-info strong { font-size: 0.94rem; }
+  .task-info p { font-size: 0.88rem; color: var(--muted); margin: 4px 0 0; }
+  .task-files { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+  .task-file { background: #f1f5f9; padding: 2px 10px; border-radius: 6px; font-size: 0.8rem;
+    font-family: 'Cascadia Code', monospace; color: var(--accent); }
+
+  /* Architecture Diagram */
+  .arch-canvas { background: #f8fafc; border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 36px 20px; margin: 16px 0; position: relative; overflow-x: auto; }
+  .arch-row { display: flex; justify-content: center; gap: 14px; margin: 6px 0; flex-wrap: wrap; }
+  .arch-box { padding: 12px 20px; border-radius: 10px; font-weight: 700; font-size: 0.85rem;
+    text-align: center; min-width: 130px; position: relative; border: 2px solid transparent; }
+  .arch-box small { display: block; font-weight: 400; font-size: 0.78rem; opacity: 0.85; margin-top: 2px; }
+  .ab-pres { background: #7c3aed; color: #fff; }
+  .ab-ctrl { background: #2563eb; color: #fff; }
+  .ab-svc { background: #059669; color: #fff; }
+  .ab-dao { background: #d97706; color: #fff; }
+  .ab-db { background: #dc2626; color: #fff; }
+  .ab-util { background: #64748b; color: #fff; }
+  .arrow-down { text-align: center; color: var(--muted); font-size: 1.4rem; margin: 2px 0; letter-spacing: 6px; }
+  .layer-label { position: absolute; left: 12px; font-size: 0.72rem; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 1px; color: var(--muted); writing-mode: vertical-rl;
+    transform: rotate(180deg); }
+  .arch-section { border: 2px dashed var(--border); border-radius: 12px; padding: 16px 20px;
+    margin: 10px 0; position: relative; }
+  .arch-section-label { position: absolute; top: -10px; left: 20px; background: var(--bg);
+    padding: 0 8px; font-size: 0.75rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.8px; color: var(--muted); }
+
+  /* Detailed arch diagram */
+  .detail-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px; margin: 14px 0; }
+  .detail-box { background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+    padding: 16px; }
+  .detail-box h4 { font-size: 0.92rem; margin-bottom: 6px; display: flex; align-items: center; gap: 8px; }
+  .detail-box ul { padding-left: 16px; font-size: 0.84rem; color: var(--muted); }
+  .detail-box ul li { margin-bottom: 3px; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+  .dot-blue { background: var(--accent); } .dot-purple { background: var(--accent2); }
+  .dot-green { background: var(--accent3); } .dot-orange { background: var(--accent4); }
+  .dot-red { background: var(--accent5); } .dot-teal { background: #0891b2; }
+
+  /* Timeline */
+  .timeline { position: relative; padding-left: 36px; margin: 20px 0; }
+  .timeline::before { content: ''; position: absolute; left: 15px; top: 0; bottom: 0;
+    width: 2px; background: var(--border); }
+  .tl-item { position: relative; margin-bottom: 24px; }
+  .tl-dot { position: absolute; left: -28px; top: 4px; width: 14px; height: 14px;
+    border-radius: 50%; border: 3px solid var(--accent); background: #fff; }
+  .tl-item h4 { font-size: 0.95rem; margin-bottom: 4px; }
+  .tl-item p { font-size: 0.88rem; color: var(--muted); }
+  .tl-tag { display: inline-block; padding: 2px 10px; border-radius: 6px; font-size: 0.78rem;
+    font-weight: 600; margin-right: 6px; }
+  .tl-w { background: #dbeafe; color: #1e40af; }
+
+  /* Code block */
+  .code-block { background: #1e293b; color: #e2e8f0; border-radius: 10px; padding: 20px;
+    font-family: 'Cascadia Code', 'Fira Code', monospace; font-size: 0.85rem; overflow-x: auto;
+    line-height: 1.7; white-space: pre; margin: 12px 0; }
+  .code-block .kw { color: #60a5fa; } .code-block .cm { color: #64748b; }
+  .code-block .st { color: #a5b4fc; } .code-block .fn { color: #34d399; }
+
+  /* Dependency arrows */
+  .dep-flow { display: flex; align-items: center; gap: 8px; margin: 6px 0; flex-wrap: wrap; }
+  .dep-box { padding: 6px 14px; border-radius: 8px; font-size: 0.82rem; font-weight: 600; }
+  .dep-arrow { color: var(--muted); font-weight: 700; }
+
+  /* Gantt-like bar */
+  .gantt { margin: 16px 0; }
+  .gantt-row { display: flex; align-items: center; margin-bottom: 8px; }
+  .gantt-label { width: 160px; font-size: 0.84rem; font-weight: 600; flex-shrink: 0; }
+  .gantt-track { flex: 1; background: #f1f5f9; border-radius: 6px; height: 26px; position: relative; overflow: hidden; }
+  .gantt-bar { height: 100%; border-radius: 6px; display: flex; align-items: center;
+    padding: 0 10px; font-size: 0.75rem; font-weight: 600; color: #fff; white-space: nowrap; }
+  .gb1 { background: var(--accent); } .gb2 { background: var(--accent2); }
+  .gb3 { background: var(--accent3); } .gb4 { background: var(--accent4); }
+  .gb5 { background: var(--accent5); } .gb6 { background: #0891b2; } .gb7 { background: #6d28d9; }
+  .gantt-weeks { display: flex; margin-bottom: 4px; }
+  .gantt-weeks span { font-size: 0.72rem; color: var(--muted); text-align: center; font-weight: 600; }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <!-- Header -->
+  <div class="header">
+    <h1>Smart Network Monitoring System</h1>
+    <p class="sub">Full Implementation Plan & Architecture</p>
+    <div class="badges">
+      <span class="badge b1">Java SE 17</span>
+      <span class="badge b2">Swing GUI</span>
+      <span class="badge b3">JDBC</span>
+      <span class="badge b4">MySQL 8</span>
+    </div>
+  </div>
+
+  <!-- Navigation -->
+  <div class="nav" id="nav">
+    <button class="on" data-p="arch">Architecture Diagram</button>
+    <button data-p="plan">Implementation Phases</button>
+    <button data-p="timeline">Timeline & Gantt</button>
+    <button data-p="classes">Detailed Class Plan</button>
+    <button data-p="deps">Dependencies & Flow</button>
+    <button data-p="testing">Testing Strategy</button>
+  </div>
+
+  <!-- ========== ARCHITECTURE DIAGRAM ========== -->
+  <div class="pane on" id="arch">
+
+    <!-- High-level layered -->
+    <div class="card">
+      <h2>High-Level Layered Architecture</h2>
+      <p>The system follows a strict <strong>3-tier MVC architecture</strong>. No layer skips — the GUI never touches the database directly.</p>
+      <div class="arch-canvas">
+
+        <div class="arch-section" style="margin-bottom: 18px;">
+          <div class="arch-section-label">Presentation Layer</div>
+          <div class="arch-row" style="padding-top: 8px;">
+            <div class="arch-box ab-pres">LoginFrame<small>Authentication UI</small></div>
+            <div class="arch-box ab-pres">MainDashboard<small>JTabbedPane Shell</small></div>
+          </div>
+          <div class="arch-row">
+            <div class="arch-box ab-pres" style="font-size:0.78rem;">DevicePanel</div>
+            <div class="arch-box ab-pres" style="font-size:0.78rem;">MonitoringPanel</div>
+            <div class="arch-box ab-pres" style="font-size:0.78rem;">SecurityPanel</div>
+            <div class="arch-box ab-pres" style="font-size:0.78rem;">FirewallPanel</div>
+            <div class="arch-box ab-pres" style="font-size:0.78rem;">OptimizationPanel</div>
+            <div class="arch-box ab-pres" style="font-size:0.78rem;">AlertPanel</div>
+            <div class="arch-box ab-pres" style="font-size:0.78rem;">ReportPanel</div>
+          </div>
+        </div>
+
+        <div class="arrow-down">▼ ▼ ▼ ▼</div>
+
+        <div class="arch-section" style="margin-bottom: 18px;">
+          <div class="arch-section-label">Controller / Service Layer</div>
+          <div class="arch-row" style="padding-top: 8px;">
+            <div class="arch-box ab-ctrl">AuthService<small>Login & RBAC</small></div>
+            <div class="arch-box ab-ctrl">MonitoringService<small>Metric Collection</small></div>
+            <div class="arch-box ab-ctrl">SecurityService<small>Threat Detection</small></div>
+            <div class="arch-box ab-ctrl">FirewallService<small>Rule Engine</small></div>
+          </div>
+          <div class="arch-row">
+            <div class="arch-box ab-ctrl">OptimizationService<small>Bandwidth Analysis</small></div>
+            <div class="arch-box ab-ctrl">AlertService<small>Threshold Engine</small></div>
+            <div class="arch-box ab-ctrl">ReportService<small>Report Generation</small></div>
+          </div>
+        </div>
+
+        <div class="arrow-down">▼ ▼ ▼ ▼</div>
+
+        <div class="arch-section" style="margin-bottom: 18px;">
+          <div class="arch-section-label">Data Access Layer (DAO)</div>
+          <div class="arch-row" style="padding-top: 8px;">
+            <div class="arch-box ab-dao">UserDAO<small>CRUD users</small></div>
+            <div class="arch-box ab-dao">DeviceDAO<small>CRUD devices</small></div>
+            <div class="arch-box ab-dao">MetricDAO<small>Insert/Query metrics</small></div>
+            <div class="arch-box ab-dao">SecurityEventDAO<small>Event logging</small></div>
+          </div>
+          <div class="arch-row">
+            <div class="arch-box ab-dao">FirewallRuleDAO<small>Rule CRUD</small></div>
+            <div class="arch-box ab-dao">AlertDAO<small>Alert CRUD</small></div>
+            <div class="arch-box ab-dao">OptimizationDAO<small>Results storage</small></div>
+            <div class="arch-box ab-dao">AuditLogDAO<small>Audit trail</small></div>
+          </div>
+        </div>
+
+        <div class="arrow-down">▼ ▼ ▼ ▼</div>
+
+        <div class="arch-section" style="margin-bottom: 8px;">
+          <div class="arch-section-label">Database Layer</div>
+          <div class="arch-row" style="padding-top: 8px;">
+            <div class="arch-box ab-db" style="min-width: 280px;">MySQL 8.0<small>network_monitor_db — 9 tables</small></div>
+          </div>
+        </div>
+
+        <div style="margin-top: 16px;">
+          <div class="arch-row">
+            <div class="arch-box ab-util">DatabaseConfig<small>JDBC Singleton</small></div>
+            <div class="arch-box ab-util">PasswordUtil<small>SHA-256 Hashing</small></div>
+            <div class="arch-box ab-util">ValidationUtil<small>Input Checks</small></div>
+            <div class="arch-box ab-util">CSVExporter<small>Report Export</small></div>
+          </div>
+          <div style="text-align:center; font-size:0.75rem; color:var(--muted); margin-top:4px;">
+            ↑ Utility classes — used across all layers
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Detailed Component Interaction -->
+    <div class="card">
+      <h2>Component Interaction Map</h2>
+      <p>How each module communicates at runtime:</p>
+      <div class="detail-grid">
+        <div class="detail-box">
+          <h4><span class="dot dot-purple"></span> User Login</h4>
+          <ul>
+            <li>LoginFrame → AuthService</li>
+            <li>AuthService → UserDAO</li>
+            <li>AuthService → AuditLogDAO</li>
+            <li>On success → MainDashboard</li>
+          </ul>
+        </div>
+        <div class="detail-box">
+          <h4><span class="dot dot-green"></span> Network Monitoring</h4>
+          <ul>
+            <li>Timer → MonitoringService</li>
+            <li>MonitoringService → DeviceDAO (get devices)</li>
+            <li>MonitoringService → MetricDAO (save metrics)</li>
+            <li>MonitoringService → AlertService (check thresholds)</li>
+            <li>MonitoringService → SecurityService (analyze)</li>
+          </ul>
+        </div>
+        <div class="detail-box">
+          <h4><span class="dot dot-red"></span> Security Detection</h4>
+          <ul>
+            <li>SecurityService ← MonitoringService (trigger)</li>
+            <li>SecurityService → SecurityEventDAO</li>
+            <li>SecurityService → BlockedIPDAO (auto-block)</li>
+            <li>SecurityService → AlertService (CRITICAL)</li>
+          </ul>
+        </div>
+        <div class="detail-box">
+          <h4><span class="dot dot-blue"></span> Firewall Management</h4>
+          <ul>
+            <li>FirewallPanel → FirewallService</li>
+            <li>FirewallService → FirewallRuleDAO</li>
+            <li>FirewallService → AuditLogDAO (log changes)</li>
+            <li>SecurityService → FirewallService (auto-rules)</li>
+          </ul>
+        </div>
+        <div class="detail-box">
+          <h4><span class="dot dot-orange"></span> Optimization Engine</h4>
+          <ul>
+            <li>OptimizationPanel → OptimizationService</li>
+            <li>OptimizationService → MetricDAO (query 24h data)</li>
+            <li>OptimizationService → OptimizationDAO (save results)</li>
+            <li>Calculates score, generates recommendations</li>
+          </ul>
+        </div>
+        <div class="detail-box">
+          <h4><span class="dot dot-teal"></span> Alert System</h4>
+          <ul>
+            <li>AlertService ← MonitoringService (trigger)</li>
+            <li>AlertService ← SecurityService (trigger)</li>
+            <li>AlertService → AlertDAO (save alerts)</li>
+            <li>AlertService → MainDashboard (badge update)</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- JDBC Pattern -->
+    <div class="card">
+      <h2>JDBC Connection Architecture</h2>
+      <div class="code-block"><span class="cm">// Connection flow used by every DAO class</span>
+
+<span class="kw">DatabaseConfig</span> (Singleton)
+    │
+    ├── <span class="fn">getConnection()</span>
+    │     ├── Class.forName(<span class="st">"com.mysql.cj.jdbc.Driver"</span>)
+    │     └── DriverManager.getConnection(URL, USER, PASS)
+    │
+    └── Used by all DAOs via: <span class="kw">try</span>-with-resources
+          │
+          ├── <span class="fn">PreparedStatement</span>  ← Parameterised queries (prevents SQL injection)
+          ├── <span class="fn">ResultSet</span>           ← Maps DB rows → Java objects (Model POJOs)
+          └── <span class="fn">Auto-close</span>          ← Connection released after each operation
+
+<span class="cm">// Every DAO follows this pattern:</span>
+<span class="kw">public</span> List&lt;Device&gt; <span class="fn">getAllDevices</span>() {
+    String sql = <span class="st">"SELECT * FROM devices"</span>;
+    <span class="kw">try</span> (Connection conn = DatabaseConfig.<span class="fn">getConnection</span>();
+         PreparedStatement ps = conn.<span class="fn">prepareStatement</span>(sql);
+         ResultSet rs = ps.<span class="fn">executeQuery</span>()) {
+        <span class="cm">// map rs → List&lt;Device&gt;</span>
+    }
+}</div>
+    </div>
+  </div>
+
+  <!-- ========== IMPLEMENTATION PHASES ========== -->
+  <div class="pane" id="plan">
+
+    <!-- Phase 1 -->
+    <div class="phase open">
+      <div class="phase-head" onclick="this.parentElement.classList.toggle('open')">
+        <div class="phase-num pn1">1</div>
+        <div class="phase-title">
+          <h3>Project Setup & Database Foundation</h3>
+          <small>Week 1 — Estimated: 3–4 days</small>
+        </div>
+        <span class="phase-chevron">▶</span>
+      </div>
+      <div class="phase-body">
+        <p><strong>Goal:</strong> Set up the development environment, create the MySQL database, and build the JDBC connection layer.</p>
+        <div class="task-row">
+          <div class="task-num">1</div>
+          <div class="task-info">
+            <strong>Create project structure in IDE</strong>
+            <p>Set up packages: main, config, model, dao, service, ui, util. Add MySQL Connector/J JAR to classpath.</p>
+            <div class="task-files"><span class="task-file">com.networkmonitor.*</span></div>
+          </div>
+        </div>
+        <div class="task-row">
+          <div class="task-num">2</div>
+          <div class="task-info">
+            <strong>Create MySQL database and run schema</strong>
+            <p>Execute schema.sql to create all 9 tables, indexes, and seed data. Verify with SELECT queries.</p>
+            <div class="task-files"><span class="task-file">schema.sql</span></div>
+          </div>
+        </div>
+        <div class="task-row">
+          <div class="task-num">3</div>
+          <div class="task-info">
+            <strong>Build DatabaseConfig singleton</strong>
+            <p>Implements JDBC connection with DriverManager. Provides getConnection() and closeConnection() methods. Test connectivity.</p>
+            <div class="task-files"><span class="task-file">DatabaseConfig.java</span></div>
+          </div>
+        </div>
+        <div class="task-row">
+          <div class="task-num">4</div>
+          <div class="task-info">
+            <strong>Create all Model (POJO) classes</strong>
+            <p>Map each table to a Java class with matching fields, constructors, getters/setters, and toString(). These are used by DAOs to pass data.</p>
+            <div class="task-files">
+              <span class="task-file">User.java</span><span class="task-file">Device.java</span>
+              <span class="task-file">NetworkMetric.java</span><span class="task-file">SecurityEvent.java</span>
+              <span class="task-file">FirewallRule.java</span><span class="task-file">Alert.java</span>
+              <span class="task-file">OptimizationResult.java</span><span class="task-file">BlockedIP.java</span>
+              <span class="task-file">AuditLog.java</span>
+            </div>
+          </div>
+        </div>
+        <div class="task-row">
+          <div class="task-num">5</div>
+          <div class="task-info">
+            <strong>Build utility classes</strong>
+            <p>PasswordUtil (SHA-256 hashing), DateUtil (timestamp formatting), ValidationUtil (IP regex, email check).</p>
+            <div class="task-files"><span class="task-file">PasswordUtil.java</span><span class="task-file">DateUtil.java</span><span class="task-file">ValidationUtil.java</span></div>
+          </div>
+        </div>
+
+        <hr>
+        <p><strong>Deliverables:</strong> Working DB connection, all 9 model classes, 3 utility classes. You should be able to call <code>DatabaseConfig.getConnection()</code> and get a live connection.</p>
+      </div>
+    </div>
+
+    <!-- Phase 2 -->
+    <div class="phase">
+      <div class="phase-head" onclick="this.parentElement.classList.toggle('open')">
+        <div class="phase-num pn2">2</div>
+        <div class="phase-title">
+          <h3>User Authentication & Login UI</h3>
+          <small>Week 1–2 — Estimated: 3–4 days</small>
+        </div>
+        <span class="phase-chevron">▶</span>
+      </div>
+      <div class="phase-body">
+        <p><strong>Goal:</strong> Build complete login/registration system with role-based access and audit logging.</p>
+        <div class="task-row">
+          <div class="task-num">1</div>
+          <div class="task-info">
+            <strong>Build UserDAO</strong>
+            <p>JDBC methods: insertUser(), findByUsername(), findById(), getAllUsers(), updateLastLogin(), deactivateUser(). All use PreparedStatement.</p>
+            <div class="task-files"><span class="task-file">UserDAO.java</span></div>
+          </div>
+        </div>
+        <div class="task-row">
+          <div class="task-num">2</div>
+          <div class="task-info">
+            <strong>Build AuditLogDAO</strong>
+            <p>insertLog(), getLogsByUser(), getLogsByDateRange(). Logs every login attempt, device change, and security action.</p>
+            <div class="task-files"><span class="task-file">AuditLogDAO.java</span></div>
+          </div>
+        </div>
+        <div class="task-row">
+          <div class="task-num">3</div>
+          <div class="task-info">
+            <strong>Build AuthService</strong>
+            <p>login(username, password) — hashes password, calls UserDAO, sets currentUser session. checkPermission(role, action) for RBAC.</p>
+            <div class="task-files"><span class="task-file">AuthService.java</span></div>
+          </div>
+        </div>
+        <div class="task-row">
+          <div class="task-num">4</div>
+          <div class="task-info">
+            <strong>Build LoginFrame (Swing)</strong>
+            <p>JFrame with username/password fields, login button, error label. On success → dispose and open MainDashboard. Clean, centered layout.</p>
+            <div class="task-files"><span class="task-file">LoginFrame.java</span></div>
+          </div>
+        </div>
+        <div class="task-row">
+          <div class="task-num">5</div>
+          <div class="task-info">
+            <strong>Build MainDashboard skeleton</strong>
+            <p>JFrame with JTabbedPane. Shows user name and role in header. Logout button. Tabs added based on role (Admin sees all, Viewer sees limited).</p>
+            <div class="task-files"><span class="task-file">MainDashboard.java</span></div>
+          </div>
+        </div>
+        <div class="task-row">
+          <div class="task-num">6</div>
+          <div class="task-info">
+            <strong>Build MainApp entry point</strong>
+            <p>main() method — sets LookAndFeel, launches LoginFrame on EDT with SwingUtilities.invokeLater().</p>
+            <div class="task-files"><span class="task-file">MainApp.java</span></div>
+          </div>
+        </div>
+
+        <hr>
+        <p><strong>Deliverables:</strong> Runnable app — user can log in with admin/admin123, see the dashboard skeleton, log out. Failed logins are recorded.</p>
+      </div>
+    </div>
+
+    <!-- Phase 3 -->
+    <div class="phase">
+      <div class="phase-head" onclick="this.parentElement.classList.toggle('open')">
+        <div class="phase-num pn3">3</div>
+        <div class="phase-title">
+          <h3>Device Management & Network Monitoring</h3>
+          <small>Week 2–3 — Estimated: 5–6 days</small>
+        </div>
+        <span class="phase-chevron">▶</span>
+      </div>
+      <div class="phase-body">
+        <p><strong>Goal:</strong> Full device CRUD and real-time network metric collection with live dashboard.</p>
+        <div class="task-row">
+          <div class="task-num">1</div>
+          <div class="task-info">
+            <strong>Build DeviceDAO</strong>
+            <p>addDevice(), updateDevice(), deleteDevice(), getAllDevices(), getByStatus(), getByType(). Full JDBC PreparedStatement CRUD.</p>
+            <div class="task-files"><span class="task-file">DeviceDAO.java</span></div>
+          </div>
+        </div>
+        <div class="task-row">
+          <div class="task-num">2</div>
+          <div class="task-info">
+            <strong>Build DevicePanel (Swing)</strong>
+            <p>JTable showing all devices. Add/Edit/Delete buttons. JDialog forms for input. Status column with color indicators (green/red/yellow).</p>
+            <div class="task-files"><span class="task-file">DevicePanel.java</span></div>
+          </div>
+        </div>
+        <div class="task-row">
+          <div class="task-num">3</div>
+          <div class="task-info">
+            <strong>Build NetworkMetricDAO</strong>
+            <p>insertMetric(), getLatestByDevice(), getByDeviceAndDateRange(), getAverageMetrics(). Handles time-series queries.</p>
+            <div class="task-files"><span class="task-file">NetworkMetricDAO.java</span></div>
+          </div>
+        </div>
+        <div class="task-row">
+          <div class="task-num">4</div>
+          <div class="task-info">
+            <strong>Build MonitoringService</strong>
+            <p>collectMetrics() — pings devices using InetAddress.isReachable() + generates simulated bandwidth/latency data. Saves via MetricDAO. Triggers AlertService threshold checks.</p>
+            <div class="task-files"><span class="task-file">MonitoringService.java</span></div>
+          </div>
+        </div>
+        <div class="task-row">
+          <div class="task-num">5</div>
+          <div class="task-info">
+            <strong>Build MonitoringPanel (Swing)</strong>
+            <p>Live JTable with latest metrics per device. Auto-refresh using javax.swing.Timer (every 10s). Status summary cards at top (total devices, online count, alerts). Optional: JFreeChart for bandwidth graph.</p>
+            <div class="task-files"><span class="task-file">MonitoringPanel.java</span></div>
+          </div>
+        </div>
+
+        <hr>
+        <p><strong>Deliverables:</strong> Add/manage devices, see live metrics updating every 10 seconds, device status auto-updates. This is the heart of the project.</p>
+      </div>
+    </div>
+
+    <!-- Phase 4 -->
+    <div class="phase">
+      <div class="phase-head" onclick="this.parentElement.classList.toggle('open')">
+        <div class="phase-num pn4">4</div>
+        <div class="phase-title">
+          <h3>Security Threat Detection & Firewall</h3>
+          <small>Week 3–4 — Estimated: 5–6 days</small>
+        </div>
+        <span class="phase-chevron">▶</span>
+      </div>
+      <div class="phase-body">
+        <p><strong>Goal:</strong> Build the security engine that detects threats and the firewall rule management system.</p>
+        <div class="task-row">
+          <div class="task-num">1</div>
+          <div class="task-info">
+            <strong>Build SecurityEventDAO & BlockedIPDAO</strong>
+            <p>Insert events, query by severity/type/device/date. Block/unblock IPs with expiry support.</p>
+            <div class="task-files"><span class="task-file">SecurityEventDAO.java</span><span class="task-file">BlockedIPDAO.java</span></div>
+          </div>
+        </div>
+        <div class="task-row">
+          <div class="task-num">2</div>
+          <div class="task-info">
+            <strong>Build SecurityService</strong>
+            <p>analyze(metric) — applies rule-based detection: if packets_in > 100K/sec → DDoS, repeated high latency → possible attack, unusual port activity → Port Scan. Auto-blocks CRITICAL source IPs.</p>
+            <div class="task-files"><span class="task-file">SecurityService.java</span></div>
+          </div>
+        </div>
+        <div class="task-row">
+          <div class="task-num">3</div>
+          <div class="task-info">
+            <strong>Build SecurityPanel (Swing)</strong>
+            <p>JTable showing security events with color-coded severity. Filter by type/severity/date. Resolve button. Blocked IPs sub-panel with unblock option.</p>
+            <div class="task-files"><span class="task-file">SecurityPanel.java</span></div>
+          </div>
+        </div>
+        <div class="task-row">
+          <div class="task-num">4</div>
+          <div class="task-info">
+            <strong>Build FirewallRuleDAO</strong>
+            <p>CRUD for firewall rules. getActiveRules() ordered by priority. toggleActive(ruleId).</p>
+            <div class="task-files"><span class="task-file">FirewallRuleDAO.java</span></div>
+          </div>
+        </div>
+        <div class="task-row">
+          <div class="task-num">5</div>
+          <div class="task-info">
+            <strong>Build FirewallService & FirewallPanel</strong>
+            <p>Service validates rules (no duplicate ports, valid IPs). Panel shows rules in JTable with drag-to-reorder priority, Add/Edit/Delete dialogs, Active toggle switch.</p>
+            <div class="task-files"><span class="task-file">FirewallService.java</span><span class="task-file">FirewallPanel.java</span></div>
+          </div>
+        </div>
+
+        <hr>
+        <p><strong>Deliverables:</strong> Security events auto-detected from metrics, threats displayed with severity colors, firewall rules manageable via GUI, auto-blocking for critical threats.</p>
+      </div>
+    </div>
+
+    <!-- Phase 5 -->
+    <div class="phase">
+      <div class="phase-head" onclick="this.parentElement.classList.toggle('open')">
+        <div class="phase-num pn5">5</div>
+        <div class="phase-title">
+          <h3>Optimization Engine & Alerts</h3>
+          <small>Week 4–5 — Estimated: 4–5 days</small>
+        </div>
+        <span class="phase-chevron">▶</span>
+      </div>
+      <div class="phase-body">
+        <p><strong>Goal:</strong> Build the bandwidth optimization analyzer and the threshold-based alert system.</p>
+        <div class="task-row">
+          <div class="task-num">1</div>
+          <div class="task-info">
+            <strong>Build AlertDAO & AlertService</strong>
+            <p>AlertDAO: insert, getUnacknowledged(), acknowledge(). AlertService: checkThresholds(metric) — if bandwidth > 90% → CRITICAL, latency > 200ms → WARNING, packet_loss > 5% → WARNING. Creates alert records.</p>
+            <div class="task-files"><span class="task-file">AlertDAO.java</span><span class="task-file">AlertService.java</span></div>
+          </div>
+        </div>
+        <div class="task-row">
+          <div class="task-num">2</div>
+          <div class="task-info">
+            <strong>Build AlertPanel (Swing)</strong>
+            <p>Notification panel with unread counter badge on tab. JTable with color rows (red=CRITICAL, yellow=WARNING, blue=INFO). Acknowledge button. Filter by severity.</p>
+            <div class="task-files"><span class="task-file">AlertPanel.java</span></div>
+          </div>
+        </div>
+        <div class="task-row">
+          <div class="task-num">3</div>
+          <div class="task-info">
+            <strong>Build OptimizationDAO & OptimizationService</strong>
+            <p>Service queries last 24h metrics per device, calculates avg/peak usage, identifies underutilized vs overutilized devices, generates reallocation suggestions with a score (0–100).</p>
+            <div class="task-files"><span class="task-file">OptimizationDAO.java</span><span class="task-file">OptimizationService.java</span></div>
+          </div>
+        </div>
+        <div class="task-row">
+          <div class="task-num">4</div>
+          <div class="task-info">
+            <strong>Build OptimizationPanel (Swing)</strong>
+            <p>"Run Analysis" button. Results table with device name, current bandwidth, recommended, score, and suggestion. Color-coded scores (green ≥ 80, yellow 50–79, red < 50).</p>
+            <div class="task-files"><span class="task-file">OptimizationPanel.java</span></div>
+          </div>
+        </div>
+
+        <hr>
+        <p><strong>Deliverables:</strong> Alerts auto-generated from monitoring data, visible in dedicated panel with badge. One-click optimization analysis with scored recommendations.</p>
+      </div>
+    </div>
+
+    <!-- Phase 6 -->
+    <div class="phase">
+      <div class="phase-head" onclick="this.parentElement.classList.toggle('open')">
+        <div class="phase-num pn6">6</div>
+        <div class="phase-title">
+          <h3>Reports, User Management & Polish</h3>
+          <small>Week 5–6 — Estimated: 4–5 days</small>
+        </div>
+        <span class="phase-chevron">▶</span>
+      </div>
+      <div class="phase-body">
+        <p><strong>Goal:</strong> Add reporting capabilities, admin user management, and polish the entire application.</p>
+        <div class="task-row">
+          <div class="task-num">1</div>
+          <div class="task-info">
+            <strong>Build ReportService & CSVExporter</strong>
+            <p>Generates network health, security incident, and bandwidth reports. Queries via existing DAOs. CSVExporter converts JTable data → .csv file using FileWriter.</p>
+            <div class="task-files"><span class="task-file">ReportService.java</span><span class="task-file">CSVExporter.java</span></div>
+          </div>
+        </div>
+        <div class="task-row">
+          <div class="task-num">2</div>
+          <div class="task-info">
+            <strong>Build ReportPanel (Swing)</strong>
+            <p>Report type dropdown (Network Health / Security / Bandwidth). Date range picker. Generate button → JTable with results. "Export CSV" button. Print option.</p>
+            <div class="task-files"><span class="task-file">ReportPanel.java</span></div>
+          </div>
+        </div>
+        <div class="task-row">
+          <div class="task-num">3</div>
+          <div class="task-info">
+            <strong>Build UserManagementPanel (Admin only)</strong>
+            <p>JTable of all users. Add user dialog, change role, activate/deactivate. Only visible when logged-in user's role is ADMIN.</p>
+            <div class="task-files"><span class="task-file">UserManagementPanel.java</span></div>
+          </div>
+        </div>
+        <div class="task-row">
+          <div class="task-num">4</div>
+          <div class="task-info">
+            <strong>UI Polish & Look and Feel</strong>
+            <p>Apply consistent colors, fonts. Set Nimbus or FlatLaf look-and-feel. Add status bar at bottom. Confirmation dialogs for delete operations. Window icons.</p>
+          </div>
+        </div>
+
+        <hr>
+        <p><strong>Deliverables:</strong> Full reporting with CSV export, admin panel for user management, polished UI across all tabs.</p>
+      </div>
+    </div>
+
+    <!-- Phase 7 -->
+    <div class="phase">
+      <div class="phase-head" onclick="this.parentElement.classList.toggle('open')">
+        <div class="phase-num pn7">7</div>
+        <div class="phase-title">
+          <h3>Integration Testing & Documentation</h3>
+          <small>Week 6 — Estimated: 2–3 days</small>
+        </div>
+        <span class="phase-chevron">▶</span>
+      </div>
+      <div class="phase-body">
+        <p><strong>Goal:</strong> End-to-end testing, bug fixes, and project documentation for submission.</p>
+        <div class="task-row">
+          <div class="task-num">1</div>
+          <div class="task-info">
+            <strong>End-to-end testing</strong>
+            <p>Test all flows: login → add device → monitor → detect threat → auto-block → alert → run optimization → generate report → export CSV. Test each role.</p>
+          </div>
+        </div>
+        <div class="task-row">
+          <div class="task-num">2</div>
+          <div class="task-info">
+            <strong>Edge case & error handling</strong>
+            <p>Invalid inputs, SQL exceptions, connection failures, concurrent access. Add try-catch blocks with user-friendly error messages (JOptionPane.showMessageDialog).</p>
+          </div>
+        </div>
+        <div class="task-row">
+          <div class="task-num">3</div>
+          <div class="task-info">
+            <strong>Project documentation</strong>
+            <p>Write README with setup instructions. Create project report synopsis: introduction, objective, modules, technology stack, ER diagram, screenshots, conclusion, future scope.</p>
+          </div>
+        </div>
+
+        <hr>
+        <p><strong>Deliverables:</strong> Fully tested application, documented project ready for submission.</p>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ========== TIMELINE & GANTT ========== -->
+  <div class="pane" id="timeline">
+    <div class="card">
+      <h2>Project Timeline — 6 Weeks</h2>
+      <div class="gantt">
+        <div class="gantt-row" style="margin-bottom:14px;">
+          <div class="gantt-label" style="color:var(--muted); font-size:0.78rem;">PHASE</div>
+          <div class="gantt-track" style="background:transparent; display:flex; height:auto;">
+            <span style="flex:1; text-align:center; font-size:0.72rem; color:var(--muted); font-weight:600;">W1</span>
+            <span style="flex:1; text-align:center; font-size:0.72rem; color:var(--muted); font-weight:600;">W2</span>
+            <span style="flex:1; text-align:center; font-size:0.72rem; color:var(--muted); font-weight:600;">W3</span>
+            <span style="flex:1; text-align:center; font-size:0.72rem; color:var(--muted); font-weight:600;">W4</span>
+            <span style="flex:1; text-align:center; font-size:0.72rem; color:var(--muted); font-weight:600;">W5</span>
+            <span style="flex:1; text-align:center; font-size:0.72rem; color:var(--muted); font-weight:600;">W6</span>
+          </div>
+        </div>
+        <div class="gantt-row">
+          <div class="gantt-label">1. Setup & DB</div>
+          <div class="gantt-track">
+            <div class="gantt-bar gb1" style="width:20%;">4 days</div>
+          </div>
+        </div>
+        <div class="gantt-row">
+          <div class="gantt-label">2. Auth & Login</div>
+          <div class="gantt-track">
+            <div class="gantt-bar gb2" style="width:22%; margin-left:12%;">4 days</div>
+          </div>
+        </div>
+        <div class="gantt-row">
+          <div class="gantt-label">3. Devices & Monitor</div>
+          <div class="gantt-track">
+            <div class="gantt-bar gb3" style="width:28%; margin-left:22%;">6 days</div>
+          </div>
+        </div>
+        <div class="gantt-row">
+          <div class="gantt-label">4. Security & Firewall</div>
+          <div class="gantt-track">
+            <div class="gantt-bar gb4" style="width:28%; margin-left:40%;">6 days</div>
+          </div>
+        </div>
+        <div class="gantt-row">
+          <div class="gantt-label">5. Optimize & Alerts</div>
+          <div class="gantt-track">
+            <div class="gantt-bar gb5" style="width:24%; margin-left:58%;">5 days</div>
+          </div>
+        </div>
+        <div class="gantt-row">
+          <div class="gantt-label">6. Reports & Polish</div>
+          <div class="gantt-track">
+            <div class="gantt-bar gb6" style="width:22%; margin-left:68%;">5 days</div>
+          </div>
+        </div>
+        <div class="gantt-row">
+          <div class="gantt-label">7. Testing & Docs</div>
+          <div class="gantt-track">
+            <div class="gantt-bar gb7" style="width:14%; margin-left:84%;">3 days</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Milestones</h2>
+      <div class="timeline">
+        <div class="tl-item">
+          <div class="tl-dot"></div>
+          <h4><span class="tl-tag tl-w">End of Week 1</span> Login Working</h4>
+          <p>User can log in, see dashboard, log out. DB is set up with all tables and sample data.</p>
+        </div>
+        <div class="tl-item">
+          <div class="tl-dot"></div>
+          <h4><span class="tl-tag tl-w">End of Week 2</span> Live Monitoring Active</h4>
+          <p>Devices added and managed. Metrics being collected and displayed in real-time on the dashboard.</p>
+        </div>
+        <div class="tl-item">
+          <div class="tl-dot"></div>
+          <h4><span class="tl-tag tl-w">End of Week 3</span> Security Detection Online</h4>
+          <p>Threats being auto-detected from metrics. Security panel shows events. Firewall rules manageable.</p>
+        </div>
+        <div class="tl-item">
+          <div class="tl-dot"></div>
+          <h4><span class="tl-tag tl-w">End of Week 4</span> Core Complete</h4>
+          <p>All 5 major modules working: monitoring, security, firewall, optimization, alerts. The system is functionally complete.</p>
+        </div>
+        <div class="tl-item">
+          <div class="tl-dot"></div>
+          <h4><span class="tl-tag tl-w">End of Week 5</span> Reports & Admin Ready</h4>
+          <p>Reports generated and exportable. Admin can manage users. UI is polished and consistent.</p>
+        </div>
+        <div class="tl-item">
+          <div class="tl-dot"></div>
+          <h4><span class="tl-tag tl-w">End of Week 6</span> Submission Ready</h4>
+          <p>Fully tested, documented, and packaged for submission. Project report complete with screenshots.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Total File Count Estimate</h2>
+      <table>
+        <tr><th>Package</th><th>Files</th><th>Approx Lines</th></tr>
+        <tr><td>model/</td><td>9 classes</td><td>~600 lines</td></tr>
+        <tr><td>dao/</td><td>9 classes</td><td>~1,800 lines</td></tr>
+        <tr><td>service/</td><td>7 classes</td><td>~1,200 lines</td></tr>
+        <tr><td>ui/</td><td>10 classes</td><td>~2,500 lines</td></tr>
+        <tr><td>config/</td><td>1 class</td><td>~50 lines</td></tr>
+        <tr><td>util/</td><td>4 classes</td><td>~300 lines</td></tr>
+        <tr><td>main/</td><td>1 class</td><td>~30 lines</td></tr>
+        <tr><td><strong>Total</strong></td><td><strong>41 Java files</strong></td><td><strong>~6,500 lines</strong></td></tr>
+      </table>
+    </div>
+  </div>
+
+  <!-- ========== DETAILED CLASS PLAN ========== -->
+  <div class="pane" id="classes">
+    <div class="card">
+      <h2>Complete Class Method Plans</h2>
+      <p>Every public method of every class, with parameter types, return types, and a one-line description of what it does.</p>
+    </div>
+
+    <!-- DAO Classes -->
+    <div class="card">
+      <h2>DAO Layer — Full Method Reference</h2>
+      <table>
+        <tr><th>Class</th><th>Method</th><th>Returns</th><th>Description</th></tr>
+        <tr><td rowspan="5"><code>UserDAO</code></td>
+          <td><code>insertUser(User u)</code></td><td>boolean</td><td>INSERT INTO users with hashed password</td></tr>
+        <tr><td><code>findByUsername(String username)</code></td><td>User</td><td>SELECT * WHERE username = ?</td></tr>
+        <tr><td><code>findById(int userId)</code></td><td>User</td><td>SELECT * WHERE user_id = ?</td></tr>
+        <tr><td><code>getAllUsers()</code></td><td>List&lt;User&gt;</td><td>SELECT * ORDER BY username</td></tr>
+        <tr><td><code>updateLastLogin(int userId)</code></td><td>void</td><td>UPDATE last_login = NOW()</td></tr>
+
+        <tr><td rowspan="5"><code>DeviceDAO</code></td>
+          <td><code>addDevice(Device d)</code></td><td>boolean</td><td>INSERT new device with all fields</td></tr>
+        <tr><td><code>updateDevice(Device d)</code></td><td>boolean</td><td>UPDATE device SET … WHERE device_id = ?</td></tr>
+        <tr><td><code>deleteDevice(int id)</code></td><td>boolean</td><td>DELETE FROM devices WHERE device_id = ?</td></tr>
+        <tr><td><code>getAllDevices()</code></td><td>List&lt;Device&gt;</td><td>SELECT * FROM devices ORDER BY name</td></tr>
+        <tr><td><code>updateStatus(int id, String status)</code></td><td>void</td><td>UPDATE status for a specific device</td></tr>
+
+        <tr><td rowspan="4"><code>NetworkMetricDAO</code></td>
+          <td><code>insertMetric(NetworkMetric m)</code></td><td>boolean</td><td>INSERT metric record with timestamp</td></tr>
+        <tr><td><code>getLatestByDevice(int deviceId)</code></td><td>NetworkMetric</td><td>Latest single metric for a device</td></tr>
+        <tr><td><code>getByDeviceAndRange(int id, Date from, Date to)</code></td><td>List&lt;NetworkMetric&gt;</td><td>Historical metrics in date range</td></tr>
+        <tr><td><code>getAverageMetrics(int deviceId, int hours)</code></td><td>NetworkMetric</td><td>AVG bandwidth, latency for last N hours</td></tr>
+
+        <tr><td rowspan="4"><code>SecurityEventDAO</code></td>
+          <td><code>insertEvent(SecurityEvent e)</code></td><td>boolean</td><td>INSERT security event record</td></tr>
+        <tr><td><code>getUnresolved()</code></td><td>List&lt;SecurityEvent&gt;</td><td>WHERE is_resolved = FALSE</td></tr>
+        <tr><td><code>resolveEvent(int eventId)</code></td><td>void</td><td>SET is_resolved=TRUE, resolved_at=NOW()</td></tr>
+        <tr><td><code>getByFilter(String type, String severity, Date from, Date to)</code></td><td>List&lt;SecurityEvent&gt;</td><td>Dynamic filter query</td></tr>
+
+        <tr><td rowspan="4"><code>AlertDAO</code></td>
+          <td><code>insertAlert(Alert a)</code></td><td>boolean</td><td>INSERT alert with severity and message</td></tr>
+        <tr><td><code>getUnacknowledged()</code></td><td>List&lt;Alert&gt;</td><td>WHERE is_acknowledged = FALSE</td></tr>
+        <tr><td><code>acknowledge(int alertId, int userId)</code></td><td>void</td><td>SET acknowledged=TRUE, by user</td></tr>
+        <tr><td><code>getAlertCount()</code></td><td>int</td><td>COUNT(*) WHERE unacknowledged</td></tr>
+      </table>
+    </div>
+
+    <!-- Service Classes -->
+    <div class="card">
+      <h2>Service Layer — Full Method Reference</h2>
+      <table>
+        <tr><th>Class</th><th>Method</th><th>Returns</th><th>Description</th></tr>
+        <tr><td rowspan="3"><code>AuthService</code></td>
+          <td><code>login(String user, String pass)</code></td><td>User</td><td>Hash pass, verify via DAO, set session, log to audit</td></tr>
+        <tr><td><code>logout()</code></td><td>void</td><td>Clear session, log to audit</td></tr>
+        <tr><td><code>hasPermission(String role, String action)</code></td><td>boolean</td><td>RBAC check — ADMIN can do all, VIEWER is read-only</td></tr>
+
+        <tr><td rowspan="3"><code>MonitoringService</code></td>
+          <td><code>collectMetrics()</code></td><td>List&lt;NetworkMetric&gt;</td><td>Ping all devices, generate/collect metrics, save to DB</td></tr>
+        <tr><td><code>getDeviceStatus(int deviceId)</code></td><td>String</td><td>ONLINE if reachable, OFFLINE if not, WARNING if slow</td></tr>
+        <tr><td><code>simulateTraffic(int deviceId)</code></td><td>NetworkMetric</td><td>Generate realistic random metrics for demo</td></tr>
+
+        <tr><td rowspan="3"><code>SecurityService</code></td>
+          <td><code>analyze(NetworkMetric m)</code></td><td>SecurityEvent</td><td>Rule-based check: DDoS, brute force, port scan detection</td></tr>
+        <tr><td><code>autoBlockIP(String ip, String reason)</code></td><td>void</td><td>Add IP to blocked_ips with 24h expiry</td></tr>
+        <tr><td><code>isIPBlocked(String ip)</code></td><td>boolean</td><td>Check if IP is in active blocked list</td></tr>
+
+        <tr><td rowspan="2"><code>AlertService</code></td>
+          <td><code>checkThresholds(NetworkMetric m)</code></td><td>Alert</td><td>If bandwidth>90%, latency>200ms, etc. → create alert</td></tr>
+        <tr><td><code>getUnreadCount()</code></td><td>int</td><td>Count unacknowledged alerts for badge</td></tr>
+
+        <tr><td rowspan="2"><code>OptimizationService</code></td>
+          <td><code>analyzeAll()</code></td><td>List&lt;OptimizationResult&gt;</td><td>Query 24h metrics per device, compute score & suggestions</td></tr>
+        <tr><td><code>calculateScore(double avg, double peak, double capacity)</code></td><td>int</td><td>0-100 score based on utilization efficiency</td></tr>
+
+        <tr><td rowspan="3"><code>ReportService</code></td>
+          <td><code>generateNetworkReport(Date from, Date to)</code></td><td>List&lt;Object[]&gt;</td><td>Network health: avg bandwidth, uptime %, top devices</td></tr>
+        <tr><td><code>generateSecurityReport(Date from, Date to)</code></td><td>List&lt;Object[]&gt;</td><td>Security: events by type, severity distribution</td></tr>
+        <tr><td><code>generateBandwidthReport(Date from, Date to)</code></td><td>List&lt;Object[]&gt;</td><td>Bandwidth: per-device usage over time period</td></tr>
+      </table>
+    </div>
+
+    <!-- UI Classes -->
+    <div class="card">
+      <h2>UI Layer — Panel Specifications</h2>
+      <table>
+        <tr><th>Panel</th><th>Key Components</th><th>User Actions</th></tr>
+        <tr><td><code>LoginFrame</code></td><td>JTextField (username), JPasswordField, JButton (Login), JLabel (error)</td>
+          <td>Enter credentials → click Login → opens Dashboard or shows error</td></tr>
+        <tr><td><code>MainDashboard</code></td><td>JTabbedPane, JLabel (user info), JButton (Logout), alert badge counter</td>
+          <td>Switch tabs, view alert count, log out</td></tr>
+        <tr><td><code>DevicePanel</code></td><td>JTable, Add/Edit/Delete JButtons, JDialog forms, status color renderer</td>
+          <td>CRUD devices, view status indicators</td></tr>
+        <tr><td><code>MonitoringPanel</code></td><td>Summary cards (JLabels), JTable (live metrics), JFreeChart panel, Timer</td>
+          <td>View live data, manual refresh, select device for chart</td></tr>
+        <tr><td><code>SecurityPanel</code></td><td>JTable (events), severity filter combo, resolve button, blocked IPs sub-table</td>
+          <td>View threats, filter, resolve events, manage blocked IPs</td></tr>
+        <tr><td><code>FirewallPanel</code></td><td>JTable (rules), priority column, toggle active, Add/Edit/Delete buttons</td>
+          <td>Manage firewall rules, reorder priority, toggle on/off</td></tr>
+        <tr><td><code>OptimizationPanel</code></td><td>Run Analysis button, JTable (results), score color renderer, suggestion column</td>
+          <td>Run analysis, view color-coded scores and recommendations</td></tr>
+        <tr><td><code>AlertPanel</code></td><td>JTable (alerts), severity color rows, acknowledge button, filter combo</td>
+          <td>View alerts, acknowledge, filter by severity</td></tr>
+        <tr><td><code>ReportPanel</code></td><td>JComboBox (report type), date pickers, generate button, JTable, export CSV button</td>
+          <td>Select report type, date range, generate, export to CSV</td></tr>
+        <tr><td><code>UserManagementPanel</code></td><td>JTable (users), add/edit/deactivate buttons, role dropdown</td>
+          <td>Admin manages users, changes roles, deactivates accounts</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <!-- ========== DEPENDENCIES & FLOW ========== -->
+  <div class="pane" id="deps">
+    <div class="card">
+      <h2>Module Dependency Map</h2>
+      <p>Build order matters — modules higher in this list are needed by modules below.</p>
+
+      <h3>Build Order (Critical Path)</h3>
+      <div class="dep-flow"><div class="dep-box" style="background:#dbeafe; color:#1e40af;">DatabaseConfig</div><span class="dep-arrow">→</span><div class="dep-box" style="background:#d1fae5; color:#065f46;">Models (POJOs)</div><span class="dep-arrow">→</span><div class="dep-box" style="background:#fef3c7; color:#92400e;">DAOs</div><span class="dep-arrow">→</span><div class="dep-box" style="background:#ede9fe; color:#5b21b6;">Services</div><span class="dep-arrow">→</span><div class="dep-box" style="background:#fee2e2; color:#991b1b;">UI Panels</div></div>
+
+      <h3 style="margin-top:28px;">Cross-Module Dependencies</h3>
+      <table>
+        <tr><th>Module</th><th>Depends On</th><th>Depended By</th></tr>
+        <tr><td><strong>DatabaseConfig</strong></td><td>None (foundation)</td><td>All DAOs</td></tr>
+        <tr><td><strong>UserDAO</strong></td><td>DatabaseConfig, User model</td><td>AuthService, AuditLogDAO</td></tr>
+        <tr><td><strong>AuthService</strong></td><td>UserDAO, PasswordUtil, AuditLogDAO</td><td>LoginFrame, all panels (RBAC checks)</td></tr>
+        <tr><td><strong>DeviceDAO</strong></td><td>DatabaseConfig, Device model</td><td>MonitoringService, SecurityService</td></tr>
+        <tr><td><strong>MonitoringService</strong></td><td>DeviceDAO, MetricDAO, AlertService, SecurityService</td><td>MonitoringPanel</td></tr>
+        <tr><td><strong>SecurityService</strong></td><td>SecurityEventDAO, BlockedIPDAO, AlertService</td><td>MonitoringService (callback), SecurityPanel</td></tr>
+        <tr><td><strong>AlertService</strong></td><td>AlertDAO</td><td>MonitoringService, SecurityService, MainDashboard</td></tr>
+        <tr><td><strong>OptimizationService</strong></td><td>MetricDAO, OptimizationDAO</td><td>OptimizationPanel</td></tr>
+        <tr><td><strong>ReportService</strong></td><td>MetricDAO, SecurityEventDAO, AlertDAO</td><td>ReportPanel</td></tr>
+      </table>
+    </div>
+
+    <div class="card">
+      <h2>Runtime Data Flow — Full Cycle</h2>
+      <p>What happens every 10 seconds when the monitoring timer fires:</p>
+      <div class="code-block"><span class="cm">// Complete runtime cycle (every 10 seconds)</span>
+
+<span class="fn">Timer fires</span>
+  │
+  ├─▶ <span class="kw">MonitoringService</span>.<span class="fn">collectMetrics()</span>
+  │     │
+  │     ├─▶ <span class="kw">DeviceDAO</span>.<span class="fn">getAllDevices()</span>              <span class="cm">// Get device list</span>
+  │     │
+  │     ├─▶ For each device:
+  │     │     ├─▶ InetAddress.<span class="fn">isReachable()</span>         <span class="cm">// Ping check</span>
+  │     │     ├─▶ <span class="fn">simulateTraffic()</span>               <span class="cm">// Generate metrics</span>
+  │     │     ├─▶ <span class="kw">MetricDAO</span>.<span class="fn">insertMetric()</span>        <span class="cm">// Save to DB</span>
+  │     │     ├─▶ <span class="kw">DeviceDAO</span>.<span class="fn">updateStatus()</span>        <span class="cm">// Update ONLINE/OFFLINE</span>
+  │     │     │
+  │     │     ├─▶ <span class="kw">AlertService</span>.<span class="fn">checkThresholds(metric)</span>
+  │     │     │     ├─▶ bandwidth > 90%?  → <span class="kw">AlertDAO</span>.<span class="fn">insertAlert</span>(CRITICAL)
+  │     │     │     ├─▶ latency > 200ms?  → <span class="kw">AlertDAO</span>.<span class="fn">insertAlert</span>(WARNING)
+  │     │     │     └─▶ packet_loss > 5%? → <span class="kw">AlertDAO</span>.<span class="fn">insertAlert</span>(WARNING)
+  │     │     │
+  │     │     └─▶ <span class="kw">SecurityService</span>.<span class="fn">analyze(metric)</span>
+  │     │           ├─▶ packets_in > 100K? → DDoS event
+  │     │           ├─▶ Repeated failures? → Brute force event
+  │     │           ├─▶ Unusual ports?     → Port scan event
+  │     │           │
+  │     │           └─▶ If CRITICAL:
+  │     │                 ├─▶ <span class="kw">SecurityEventDAO</span>.<span class="fn">insertEvent()</span>
+  │     │                 ├─▶ <span class="kw">BlockedIPDAO</span>.<span class="fn">blockIP()</span>
+  │     │                 └─▶ <span class="kw">AlertDAO</span>.<span class="fn">insertAlert</span>(CRITICAL)
+  │     │
+  │     └─▶ Return updated metrics list
+  │
+  └─▶ <span class="kw">MonitoringPanel</span>.<span class="fn">refreshTable()</span>           <span class="cm">// Update JTable on EDT</span>
+        ├─▶ Update summary cards
+        ├─▶ Redraw chart
+        └─▶ <span class="kw">MainDashboard</span>.<span class="fn">updateAlertBadge()</span>     <span class="cm">// Update alert count</span></div>
+    </div>
+  </div>
+
+  <!-- ========== TESTING STRATEGY ========== -->
+  <div class="pane" id="testing">
+    <div class="card">
+      <h2>Testing Strategy</h2>
+      <p>Testing plan organized by module — covers unit tests, integration tests, and demo scenarios for your project presentation.</p>
+    </div>
+
+    <div class="card">
+      <h2>Module-wise Test Cases</h2>
+      <table>
+        <tr><th>Module</th><th>Test</th><th>Expected Result</th></tr>
+        <tr><td rowspan="4"><strong>Authentication</strong></td>
+          <td>Login with valid admin credentials</td><td>Dashboard opens, user info displayed</td></tr>
+        <tr><td>Login with wrong password</td><td>Error message shown, audit log entry created</td></tr>
+        <tr><td>Login as VIEWER, try to add device</td><td>Add button disabled or "Access Denied" dialog</td></tr>
+        <tr><td>Login as ADMIN, manage users</td><td>User management tab visible, can add/deactivate</td></tr>
+
+        <tr><td rowspan="4"><strong>Device Management</strong></td>
+          <td>Add device with valid IP</td><td>Device appears in table, saved in DB</td></tr>
+        <tr><td>Add device with duplicate IP</td><td>Validation error: "IP already exists"</td></tr>
+        <tr><td>Delete device with metrics</td><td>Cascade delete removes related metrics</td></tr>
+        <tr><td>Edit device details</td><td>Updated fields reflected in table and DB</td></tr>
+
+        <tr><td rowspan="3"><strong>Monitoring</strong></td>
+          <td>Wait 30 seconds with devices added</td><td>3 metric records per device in table</td></tr>
+        <tr><td>Add unreachable IP (e.g., 192.168.99.99)</td><td>Device shows OFFLINE status</td></tr>
+        <tr><td>Metrics exceed threshold</td><td>Alert auto-created, badge count increments</td></tr>
+
+        <tr><td rowspan="3"><strong>Security</strong></td>
+          <td>Simulate high packet rate on a device</td><td>DDoS event detected and logged</td></tr>
+        <tr><td>CRITICAL threat detected</td><td>Source IP auto-blocked, alert created</td></tr>
+        <tr><td>Resolve a security event</td><td>Status changes to resolved, resolved_at set</td></tr>
+
+        <tr><td rowspan="3"><strong>Firewall</strong></td>
+          <td>Add firewall rule</td><td>Rule appears in table with priority</td></tr>
+        <tr><td>Toggle rule active/inactive</td><td>Status updates, visual indicator changes</td></tr>
+        <tr><td>Add rule with invalid port (> 65535)</td><td>Validation error shown</td></tr>
+
+        <tr><td rowspan="2"><strong>Optimization</strong></td>
+          <td>Run analysis after 1+ hour of metrics</td><td>Results table with scores and recommendations</td></tr>
+        <tr><td>Device with > 90% bandwidth usage</td><td>Low score (red), "Reduce load" suggestion</td></tr>
+
+        <tr><td rowspan="2"><strong>Reports</strong></td>
+          <td>Generate network health report</td><td>Table populated with device stats for date range</td></tr>
+        <tr><td>Export to CSV</td><td>.csv file created, matches JTable data</td></tr>
+      </table>
+    </div>
+
+    <div class="card">
+      <h2>Demo Script for Project Presentation</h2>
+      <p>Follow this sequence to showcase all features in 10–15 minutes:</p>
+      <div class="timeline">
+        <div class="tl-item"><div class="tl-dot"></div>
+          <h4>Step 1: Login</h4><p>Log in as admin. Show dashboard. Point out tabs and user info.</p></div>
+        <div class="tl-item"><div class="tl-dot"></div>
+          <h4>Step 2: Add devices</h4><p>Add 2–3 devices (use local IPs like 192.168.1.1). Show CRUD operations.</p></div>
+        <div class="tl-item"><div class="tl-dot"></div>
+          <h4>Step 3: Monitor</h4><p>Switch to monitoring tab. Wait for auto-refresh. Show live metrics updating.</p></div>
+        <div class="tl-item"><div class="tl-dot"></div>
+          <h4>Step 4: Security event</h4><p>Trigger a simulated threat (the system should auto-detect one from metrics). Show it in security tab.</p></div>
+        <div class="tl-item"><div class="tl-dot"></div>
+          <h4>Step 5: Alert</h4><p>Show alert badge on dashboard. Open alerts tab. Acknowledge an alert.</p></div>
+        <div class="tl-item"><div class="tl-dot"></div>
+          <h4>Step 6: Firewall</h4><p>Add a firewall rule. Toggle it on/off. Show the blocked IPs list.</p></div>
+        <div class="tl-item"><div class="tl-dot"></div>
+          <h4>Step 7: Optimization</h4><p>Run optimization analysis. Show scores and recommendations.</p></div>
+        <div class="tl-item"><div class="tl-dot"></div>
+          <h4>Step 8: Report</h4><p>Generate a report. Export to CSV. Open the CSV file.</p></div>
+        <div class="tl-item"><div class="tl-dot"></div>
+          <h4>Step 9: RBAC</h4><p>Logout. Login as VIEWER. Show restricted access (can't add/delete).</p></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  document.getElementById('nav').addEventListener('click', function(e) {
+    if (e.target.tagName !== 'BUTTON') return;
+    document.querySelectorAll('.nav button').forEach(b => b.classList.remove('on'));
+    document.querySelectorAll('.pane').forEach(p => p.classList.remove('on'));
+    e.target.classList.add('on');
+    document.getElementById(e.target.dataset.p).classList.add('on');
+  });
+</script>
+</body>
+</html>
