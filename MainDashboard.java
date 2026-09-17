@@ -1,18 +1,19 @@
 package com.networkmonitor.ui;
 
 import com.networkmonitor.model.User;
-import com.networkmonitor.service.*;
+import com.networkmonitor.service.AlertService;
+import com.networkmonitor.service.AuthService;
+import com.networkmonitor.util.UITheme;
+
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 
 /**
- * MainDashboard - Main application window with tabbed interface
- * Contains all panels (Device, Monitoring, Security, Firewall, Optimization, Alerts, Reports, Users)
- * Visibility controlled by user role
+ * MainDashboard - Main application window with tabbed interface and high-contrast UI
  */
-public class MainDashboard extends JFrame implements ThemeManager.ThemeListener {
+public class MainDashboard extends JFrame {
 
     private User currentUser;
     private AuthService authService;
@@ -20,17 +21,6 @@ public class MainDashboard extends JFrame implements ThemeManager.ThemeListener 
     private JLabel alertBadgeLabel;
     private JLabel userInfoLabel;
     private Timer alertRefreshTimer;
-
-    private JPanel mainPanel;
-    private JPanel headerPanel;
-    private JPanel centerPanel;
-    private JPanel rightPanel;
-    private JPanel footerPanel;
-    private JLabel titleLabel;
-    private JLabel statusLabel;
-    private JLabel timestampLabel;
-    private JButton logoutButton;
-    private JButton themeToggleButton;
 
     // UI Panels
     private DevicePanel devicePanel;
@@ -47,84 +37,37 @@ public class MainDashboard extends JFrame implements ThemeManager.ThemeListener 
         this.authService = AuthService.getInstance();
         initializeUI();
         setupAutoRefresh();
-        ThemeManager.addThemeListener(this);
-        applyTheme();
     }
 
-    @Override
-    public void onThemeChanged() {
-        applyTheme();
-    }
-
-    private void applyTheme() {
-        mainPanel.setBackground(ThemeManager.getBackgroundColor());
-        headerPanel.setBackground(ThemeManager.getPrimaryColor());
-        centerPanel.setBackground(ThemeManager.getPrimaryColor());
-        rightPanel.setBackground(ThemeManager.getPrimaryColor());
-        footerPanel.setBackground(ThemeManager.getBorderColor());
-        
-        tabbedPane.setBackground(ThemeManager.getCardColor());
-        tabbedPane.setForeground(ThemeManager.getTextColor());
-        
-        titleLabel.setForeground(Color.WHITE);
-        alertBadgeLabel.setForeground(Color.WHITE);
-        userInfoLabel.setForeground(Color.WHITE);
-        
-        logoutButton.setBackground(ThemeManager.getErrorColor());
-        logoutButton.setForeground(Color.WHITE);
-        
-        themeToggleButton.setBackground(ThemeManager.getPrimaryColor().darker());
-        themeToggleButton.setForeground(Color.WHITE);
-        themeToggleButton.setText(ThemeManager.isDarkMode() ? "☀️ Light" : "🌙 Dark");
-        
-        statusLabel.setForeground(ThemeManager.getSuccessColor());
-        timestampLabel.setForeground(ThemeManager.getTextMutedColor());
-        
-        // Ensure panels repaint
-        mainPanel.repaint();
-    }
-
-    /**
-     * Initialize main UI components
-     */
     private void initializeUI() {
-        setTitle("Smart Network Monitoring System - " + currentUser.getFullName() + " (" + currentUser.getRole() + ")");
+        setTitle("Smart Network Monitor — " + currentUser.getFullName() + " (" + currentUser.getRole() + ")");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        setSize(1400, 800);
+        setSize(1380, 820);
         setLocationRelativeTo(null);
-        setExtendedState(JFrame.MAXIMIZED_BOTH);
 
-        // Set look and feel
-        try {
-            UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
-        } catch (Exception e) {
-            System.err.println("Error setting look and feel: " + e.getMessage());
-        }
+        JPanel mainPanel = new JPanel(new BorderLayout());
+        mainPanel.setBackground(UITheme.BG_CANVAS);
 
-        // Main panel with BorderLayout
-        mainPanel = new JPanel(new BorderLayout());
-
-        // Header panel
-        headerPanel = createHeaderPanel();
+        // Header Bar
+        JPanel headerPanel = createHeaderPanel();
         mainPanel.add(headerPanel, BorderLayout.NORTH);
 
-        // Tabbed pane for different sections
-        tabbedPane = new JTabbedPane(JTabbedPane.TOP, JTabbedPane.SCROLL_TAB_LAYOUT);
-        tabbedPane.setFont(new Font("Arial", Font.PLAIN, 12));
+        // Main Tabbed Container
+        tabbedPane = new JTabbedPane(JTabbedPane.TOP);
+        tabbedPane.setFont(UITheme.FONT_SUBHEADER);
+        tabbedPane.setBackground(UITheme.CARD_BG);
 
-        // Create and add panels based on user role
         createPanels();
         addPanelsToTabs();
 
         mainPanel.add(tabbedPane, BorderLayout.CENTER);
 
-        // Footer panel
-        footerPanel = createFooterPanel();
+        // Footer Bar
+        JPanel footerPanel = createFooterPanel();
         mainPanel.add(footerPanel, BorderLayout.SOUTH);
 
         add(mainPanel);
 
-        // Handle window close
         addWindowListener(new WindowAdapter() {
             @Override
             public void windowClosing(WindowEvent e) {
@@ -133,79 +76,73 @@ public class MainDashboard extends JFrame implements ThemeManager.ThemeListener 
         });
     }
 
-    /**
-     * Create header panel with user info and logout button
-     */
     private JPanel createHeaderPanel() {
-        JPanel header = new JPanel();
-        header.setLayout(new BorderLayout(10, 10));
-        header.setBorder(BorderFactory.createEmptyBorder(10, 15, 10, 15));
+        JPanel headerPanel = new JPanel(new BorderLayout(15, 0));
+        headerPanel.setBackground(UITheme.BG_DARK_HEADER);
+        headerPanel.setBorder(BorderFactory.createEmptyBorder(12, 20, 12, 20));
 
-        // Title
-        titleLabel = new JLabel("Smart Network Monitoring System");
-        titleLabel.setFont(new Font("Arial", Font.BOLD, 16));
-        header.add(titleLabel, BorderLayout.WEST);
+        // Brand Title
+        JLabel titleLabel = new JLabel("🌐 Smart Network Monitoring System");
+        titleLabel.setFont(UITheme.FONT_HEADER);
+        titleLabel.setForeground(UITheme.TEXT_LIGHT);
+        headerPanel.add(titleLabel, BorderLayout.WEST);
 
-        // Center panel for alerts
-        centerPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 20, 0));
+        // Center Alert Indicator
+        JPanel centerPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 0, 0));
+        centerPanel.setOpaque(false);
 
-        // Alert badge
         alertBadgeLabel = new JLabel("🔔 Alerts: 0");
-        alertBadgeLabel.setFont(new Font("Arial", Font.BOLD, 12));
+        alertBadgeLabel.setFont(UITheme.FONT_BODY_BOLD);
+        alertBadgeLabel.setForeground(UITheme.WARNING_ORANGE);
+        alertBadgeLabel.setOpaque(true);
+        alertBadgeLabel.setBackground(new Color(30, 41, 59)); // Dark slate pill
+        alertBadgeLabel.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(UITheme.WARNING_ORANGE, 1, true),
+            BorderFactory.createEmptyBorder(4, 12, 4, 12)
+        ));
         centerPanel.add(alertBadgeLabel);
+        headerPanel.add(centerPanel, BorderLayout.CENTER);
 
-        header.add(centerPanel, BorderLayout.CENTER);
-
-        // Right panel with user info and logout
-        rightPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 15, 0));
-
-        // Theme Toggle Button
-        themeToggleButton = new JButton();
-        themeToggleButton.setFont(new Font("Arial", Font.BOLD, 11));
-        themeToggleButton.setBorder(BorderFactory.createEmptyBorder(5, 10, 5, 10));
-        themeToggleButton.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        themeToggleButton.setFocusPainted(false);
-        themeToggleButton.addActionListener(e -> ThemeManager.toggleTheme());
-        rightPanel.add(themeToggleButton);
+        // Right User Profile & Logout
+        JPanel rightPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 14, 0));
+        rightPanel.setOpaque(false);
 
         userInfoLabel = new JLabel("👤 " + currentUser.getFullName() + " (" + currentUser.getRole() + ")");
-        userInfoLabel.setFont(new Font("Arial", Font.PLAIN, 11));
+        userInfoLabel.setFont(UITheme.FONT_BODY);
+        userInfoLabel.setForeground(UITheme.TEXT_LIGHT);
         rightPanel.add(userInfoLabel);
 
-        logoutButton = new JButton("Logout");
-        logoutButton.setFont(new Font("Arial", Font.BOLD, 11));
-        logoutButton.setBorder(BorderFactory.createEmptyBorder(5, 15, 5, 15));
-        logoutButton.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        JButton logoutButton = new JButton("Sign Out");
+        UITheme.styleDangerButton(logoutButton);
         logoutButton.addActionListener(e -> handleLogout());
         rightPanel.add(logoutButton);
 
-        header.add(rightPanel, BorderLayout.EAST);
+        headerPanel.add(rightPanel, BorderLayout.EAST);
 
-        return header;
+        return headerPanel;
     }
 
-    /**
-     * Create footer panel with status info
-     */
     private JPanel createFooterPanel() {
-        JPanel footer = new JPanel();
-        footer.setLayout(new BorderLayout(10, 10));
-        footer.setBorder(BorderFactory.createEmptyBorder(5, 10, 5, 10));
+        JPanel footerPanel = new JPanel(new BorderLayout(10, 0));
+        footerPanel.setBackground(UITheme.CARD_BG);
+        footerPanel.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createMatteBorder(1, 0, 0, 0, UITheme.BORDER_LIGHT),
+            BorderFactory.createEmptyBorder(6, 20, 6, 20)
+        ));
 
-        statusLabel = new JLabel("Status: Connected ✓");
-        statusLabel.setFont(new Font("Arial", Font.PLAIN, 10));
-        footer.add(statusLabel, BorderLayout.WEST);
+        JLabel statusLabel = new JLabel("● Database Connected (MySQL 8.0)");
+        statusLabel.setFont(UITheme.FONT_SMALL);
+        statusLabel.setForeground(UITheme.SUCCESS_GREEN);
+        footerPanel.add(statusLabel, BorderLayout.WEST);
 
-        timestampLabel = new JLabel("Last updated: " + new java.util.Date());
-        timestampLabel.setFont(new Font("Arial", Font.PLAIN, 10));
-        footer.add(timestampLabel, BorderLayout.EAST);
+        JLabel timestampLabel = new JLabel("Session Active | " + currentUser.getUsername());
+        timestampLabel.setFont(UITheme.FONT_SMALL);
+        timestampLabel.setForeground(UITheme.TEXT_MUTED);
+        footerPanel.add(timestampLabel, BorderLayout.EAST);
 
-        return footer;
+        return footerPanel;
     }
 
-    /**
-     * Create all UI panels
-     */
     private void createPanels() {
         devicePanel = new DevicePanel(currentUser);
         monitoringPanel = new MonitoringPanel(currentUser);
@@ -217,16 +154,11 @@ public class MainDashboard extends JFrame implements ThemeManager.ThemeListener 
         userManagementPanel = new UserManagementPanel(currentUser);
     }
 
-    /**
-     * Add panels to tabs based on user role
-     */
     private void addPanelsToTabs() {
-        // Everyone can see these
         tabbedPane.addTab("📊 Monitoring", monitoringPanel);
         tabbedPane.addTab("🔔 Alerts", alertPanel);
         tabbedPane.addTab("📈 Reports", reportPanel);
 
-        // OPERATOR and ADMIN can see these
         if (isRoleAllowed("OPERATOR")) {
             tabbedPane.addTab("📱 Devices", devicePanel);
             tabbedPane.addTab("🛡️ Security", securityPanel);
@@ -234,100 +166,60 @@ public class MainDashboard extends JFrame implements ThemeManager.ThemeListener 
             tabbedPane.addTab("⚡ Optimization", optimizationPanel);
         }
 
-        // ADMIN only
         if (isRoleAllowed("ADMIN")) {
             tabbedPane.addTab("👥 Users", userManagementPanel);
         }
     }
 
-    /**
-     * Check if user's role can access feature
-     */
     private boolean isRoleAllowed(String requiredRole) {
         String userRole = currentUser.getRole();
-
         if ("ADMIN".equals(requiredRole)) {
             return "ADMIN".equals(userRole);
         } else if ("OPERATOR".equals(requiredRole)) {
             return "ADMIN".equals(userRole) || "OPERATOR".equals(userRole);
         }
-
-        return true; // VIEWER can see public tabs
+        return true;
     }
 
-    /**
-     * Setup auto-refresh timer for alerts
-     */
     private void setupAutoRefresh() {
-        alertRefreshTimer = new Timer(10000, e -> updateAlertBadge()); // Every 10 seconds
+        alertRefreshTimer = new Timer(8000, e -> updateAlertBadge());
         alertRefreshTimer.start();
     }
 
-    /**
-     * Update alert badge with unacknowledged count
-     */
     private void updateAlertBadge() {
         try {
             AlertService alertService = AlertService.getInstance();
-            int unacknowledgedCount = alertService.getUnacknowledgedCount();
+            int count = alertService.getUnacknowledgedCount();
 
-            String badgeText;
-            if (unacknowledgedCount == 0) {
-                badgeText = "🔔 Alerts: None";
-            } else if (unacknowledgedCount == 1) {
-                badgeText = "🔔 Alerts: 1 new";
-            } else {
-                badgeText = "🔔 Alerts: " + unacknowledgedCount + " new";
-            }
-
-            SwingUtilities.invokeLater(() -> alertBadgeLabel.setText(badgeText));
-
-        } catch (Exception e) {
-            System.err.println("[MainDashboard] Error updating alert badge: " + e.getMessage());
-        }
+            SwingUtilities.invokeLater(() -> {
+                if (count == 0) {
+                    alertBadgeLabel.setText("🔔 Alerts: 0 Active");
+                    alertBadgeLabel.setForeground(UITheme.TEXT_MUTED);
+                    alertBadgeLabel.setBorder(BorderFactory.createCompoundBorder(
+                        BorderFactory.createLineBorder(UITheme.BORDER_DARK, 1, true),
+                        BorderFactory.createEmptyBorder(4, 12, 4, 12)
+                    ));
+                } else {
+                    alertBadgeLabel.setText("🔔 Alerts: " + count + " Action Required");
+                    alertBadgeLabel.setForeground(UITheme.DANGER_RED);
+                    alertBadgeLabel.setBorder(BorderFactory.createCompoundBorder(
+                        BorderFactory.createLineBorder(UITheme.DANGER_RED, 1, true),
+                        BorderFactory.createEmptyBorder(4, 12, 4, 12)
+                    ));
+                }
+            });
+        } catch (Exception ignored) {}
     }
 
-    /**
-     * Handle logout
-     */
     private void handleLogout() {
-        // Stop refresh timer
         if (alertRefreshTimer != null) {
             alertRefreshTimer.stop();
         }
-
-        ThemeManager.removeThemeListener(this);
-
-        // Logout from service
         authService.logout("127.0.0.1");
-        System.out.println("[MainDashboard] User logged out");
-
-        // Return to login
         dispose();
         SwingUtilities.invokeLater(() -> {
             LoginFrame loginFrame = new LoginFrame();
             loginFrame.setVisible(true);
         });
-    }
-
-    /**
-     * Get alert badge label (used by AlertPanel to update)
-     */
-    public JLabel getAlertBadgeLabel() {
-        return alertBadgeLabel;
-    }
-
-    /**
-     * Get tabbed pane (used by panels)
-     */
-    public JTabbedPane getTabbedPane() {
-        return tabbedPane;
-    }
-
-    /**
-     * Get current user
-     */
-    public User getCurrentUser() {
-        return currentUser;
     }
 }

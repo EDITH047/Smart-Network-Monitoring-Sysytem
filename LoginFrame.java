@@ -1,244 +1,200 @@
 package com.networkmonitor.ui;
 
-import com.networkmonitor.service.AuthService;
 import com.networkmonitor.model.User;
+import com.networkmonitor.service.AuthService;
+import com.networkmonitor.util.UITheme;
+
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
+import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 
 /**
- * LoginFrame - User authentication UI
- * Displayed when application starts, handles login/logout
+ * LoginFrame - Professional User Authentication UI
  */
-public class LoginFrame extends JFrame implements ThemeManager.ThemeListener {
+public class LoginFrame extends JFrame {
 
     private JTextField usernameField;
     private JPasswordField passwordField;
     private JButton loginButton;
     private JButton exitButton;
     private JLabel errorLabel;
-    private JLabel titleLabel;
-    private JLabel subtitleLabel;
-    private JLabel usernameLabel;
-    private JLabel passwordLabel;
-    private JLabel infoLabel;
-    private JPanel mainPanel;
-    private JPanel buttonPanel;
     private AuthService authService;
 
     public LoginFrame() {
         this.authService = AuthService.getInstance();
         initializeUI();
-        ThemeManager.addThemeListener(this);
-        applyTheme();
-    }
-    
-    @Override
-    public void onThemeChanged() {
-        applyTheme();
-    }
-    
-    private void applyTheme() {
-        mainPanel.setBackground(ThemeManager.getBackgroundColor());
-        buttonPanel.setBackground(ThemeManager.getBackgroundColor());
-        
-        titleLabel.setForeground(ThemeManager.getPrimaryColor());
-        subtitleLabel.setForeground(ThemeManager.getTextMutedColor());
-        
-        usernameLabel.setForeground(ThemeManager.getTextColor());
-        usernameField.setBackground(ThemeManager.getCardColor());
-        usernameField.setForeground(ThemeManager.getTextColor());
-        usernameField.setBorder(BorderFactory.createLineBorder(ThemeManager.getBorderColor(), 1));
-        
-        passwordLabel.setForeground(ThemeManager.getTextColor());
-        passwordField.setBackground(ThemeManager.getCardColor());
-        passwordField.setForeground(ThemeManager.getTextColor());
-        passwordField.setBorder(BorderFactory.createLineBorder(ThemeManager.getBorderColor(), 1));
-        
-        errorLabel.setForeground(ThemeManager.getErrorColor());
-        infoLabel.setForeground(ThemeManager.getTextMutedColor());
-        
-        loginButton.setBackground(ThemeManager.getPrimaryColor());
-        loginButton.setForeground(Color.WHITE);
-        
-        exitButton.setBackground(ThemeManager.getTextMutedColor());
-        exitButton.setForeground(Color.WHITE);
-        
-        mainPanel.repaint();
     }
 
-    /**
-     * Initialize UI components
-     */
     private void initializeUI() {
-        setTitle("Smart Network Monitoring System - Login");
+        setTitle("Smart Network Monitor — Authentication");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        setSize(500, 400);
+        setSize(460, 480);
         setLocationRelativeTo(null);
         setResizable(false);
-        setUndecorated(false);
 
-        // Set look and feel
-        try {
-            UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
-        } catch (Exception e) {
-            System.err.println("Error setting look and feel: " + e.getMessage());
-        }
+        // Canvas Panel
+        JPanel rootPanel = new JPanel(new GridBagLayout());
+        rootPanel.setBackground(UITheme.BG_CANVAS);
 
-        // Main panel
-        mainPanel = new JPanel();
-        mainPanel.setLayout(new BoxLayout(mainPanel, BoxLayout.Y_AXIS));
-        mainPanel.setBorder(BorderFactory.createEmptyBorder(40, 50, 40, 50));
+        // Card Container
+        JPanel cardPanel = new JPanel();
+        cardPanel.setLayout(new BoxLayout(cardPanel, BoxLayout.Y_AXIS));
+        cardPanel.setPreferredSize(new Dimension(380, 400));
+        UITheme.styleCard(cardPanel);
 
-        // Title
-        titleLabel = new JLabel("Network Monitoring System");
-        titleLabel.setFont(new Font("Arial", Font.BOLD, 24));
+        // 1. Icon & Header
+        JLabel logoLabel = new JLabel("🌐", SwingConstants.CENTER);
+        logoLabel.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 36));
+        logoLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+        cardPanel.add(logoLabel);
+
+        cardPanel.add(Box.createVerticalStrut(6));
+
+        JLabel titleLabel = new JLabel("Network Monitor System");
+        titleLabel.setFont(UITheme.FONT_HEADER);
+        titleLabel.setForeground(UITheme.PRIMARY_BLUE);
         titleLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
-        mainPanel.add(titleLabel);
+        cardPanel.add(titleLabel);
 
-        // Subtitle
-        subtitleLabel = new JLabel("Secure Login");
-        subtitleLabel.setFont(new Font("Arial", Font.PLAIN, 14));
+        JLabel subtitleLabel = new JLabel("Sign in to access your dashboard");
+        subtitleLabel.setFont(UITheme.FONT_SMALL);
+        subtitleLabel.setForeground(UITheme.TEXT_MUTED);
         subtitleLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
-        mainPanel.add(subtitleLabel);
+        cardPanel.add(subtitleLabel);
 
-        mainPanel.add(Box.createVerticalStrut(30));
+        cardPanel.add(Box.createVerticalStrut(20));
 
-        // Username section
-        usernameLabel = new JLabel("Username:");
-        usernameLabel.setFont(new Font("Arial", Font.PLAIN, 12));
-        mainPanel.add(usernameLabel);
+        // 2. Username Input
+        JLabel uLabel = new JLabel("Username");
+        uLabel.setFont(UITheme.FONT_BODY_BOLD);
+        uLabel.setForeground(UITheme.TEXT_PRIMARY);
+        uLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        cardPanel.add(uLabel);
+
+        cardPanel.add(Box.createVerticalStrut(4));
 
         usernameField = new JTextField();
-        usernameField.setFont(new Font("Arial", Font.PLAIN, 12));
-        usernameField.setMaximumSize(new Dimension(Integer.MAX_VALUE, 35));
-        mainPanel.add(usernameField);
+        UITheme.styleTextField(usernameField);
+        usernameField.setMaximumSize(new Dimension(Integer.MAX_VALUE, 36));
+        cardPanel.add(usernameField);
 
-        mainPanel.add(Box.createVerticalStrut(15));
+        cardPanel.add(Box.createVerticalStrut(14));
 
-        // Password section
-        passwordLabel = new JLabel("Password:");
-        passwordLabel.setFont(new Font("Arial", Font.PLAIN, 12));
-        mainPanel.add(passwordLabel);
+        // 3. Password Input
+        JLabel pLabel = new JLabel("Password");
+        pLabel.setFont(UITheme.FONT_BODY_BOLD);
+        pLabel.setForeground(UITheme.TEXT_PRIMARY);
+        pLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        cardPanel.add(pLabel);
+
+        cardPanel.add(Box.createVerticalStrut(4));
 
         passwordField = new JPasswordField();
-        passwordField.setFont(new Font("Arial", Font.PLAIN, 12));
-        passwordField.setMaximumSize(new Dimension(Integer.MAX_VALUE, 35));
-        passwordField.addKeyListener(new java.awt.event.KeyAdapter() {
+        UITheme.styleTextField(passwordField);
+        passwordField.setMaximumSize(new Dimension(Integer.MAX_VALUE, 36));
+        passwordField.addKeyListener(new KeyAdapter() {
+            @Override
             public void keyPressed(KeyEvent e) {
                 if (e.getKeyCode() == KeyEvent.VK_ENTER) {
-                    loginButton.doClick();
+                    handleLogin();
                 }
             }
         });
-        mainPanel.add(passwordField);
+        cardPanel.add(passwordField);
 
-        mainPanel.add(Box.createVerticalStrut(20));
+        cardPanel.add(Box.createVerticalStrut(10));
 
-        // Error label
-        errorLabel = new JLabel();
-        errorLabel.setFont(new Font("Arial", Font.PLAIN, 11));
+        // Error Feedback Label
+        errorLabel = new JLabel(" ");
+        errorLabel.setFont(UITheme.FONT_SMALL);
+        errorLabel.setForeground(UITheme.DANGER_RED);
         errorLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
-        mainPanel.add(errorLabel);
+        cardPanel.add(errorLabel);
 
-        mainPanel.add(Box.createVerticalStrut(15));
+        cardPanel.add(Box.createVerticalStrut(14));
 
-        // Button panel
-        buttonPanel = new JPanel();
-        buttonPanel.setLayout(new BoxLayout(buttonPanel, BoxLayout.X_AXIS));
-        buttonPanel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 40));
+        // 4. Buttons Container
+        JPanel btnRow = new JPanel(new GridLayout(1, 2, 10, 0));
+        btnRow.setOpaque(false);
+        btnRow.setMaximumSize(new Dimension(Integer.MAX_VALUE, 38));
 
-        loginButton = new JButton("Login");
-        loginButton.setFont(new Font("Arial", Font.BOLD, 12));
-        loginButton.setBorder(BorderFactory.createEmptyBorder(8, 30, 8, 30));
-        loginButton.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        loginButton.addActionListener(this::handleLogin);
+        loginButton = new JButton("Sign In");
+        UITheme.stylePrimaryButton(loginButton);
+        loginButton.addActionListener(e -> handleLogin());
 
         exitButton = new JButton("Exit");
-        exitButton.setFont(new Font("Arial", Font.BOLD, 12));
-        exitButton.setBorder(BorderFactory.createEmptyBorder(8, 30, 8, 30));
-        exitButton.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        UITheme.styleNeutralButton(exitButton);
         exitButton.addActionListener(e -> System.exit(0));
 
-        buttonPanel.add(loginButton);
-        buttonPanel.add(Box.createHorizontalStrut(15));
-        buttonPanel.add(exitButton);
+        btnRow.add(loginButton);
+        btnRow.add(exitButton);
+        cardPanel.add(btnRow);
 
-        mainPanel.add(buttonPanel);
+        cardPanel.add(Box.createVerticalStrut(18));
 
-        // Demo credentials info
-        mainPanel.add(Box.createVerticalStrut(25));
-        infoLabel = new JLabel("Demo: admin / admin123");
-        infoLabel.setFont(new Font("Arial", Font.ITALIC, 10));
-        infoLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
-        mainPanel.add(infoLabel);
+        // Demo credentials hint
+        JPanel hintBox = new JPanel(new FlowLayout(FlowLayout.CENTER));
+        hintBox.setOpaque(true);
+        hintBox.setBackground(new Color(238, 242, 255));
+        hintBox.setBorder(BorderFactory.createLineBorder(new Color(199, 210, 254), 1, true));
+        hintBox.setMaximumSize(new Dimension(Integer.MAX_VALUE, 30));
 
-        add(mainPanel);
+        JLabel hintLabel = new JLabel("Default Admin: admin / admin123");
+        hintLabel.setFont(UITheme.FONT_SMALL);
+        hintLabel.setForeground(UITheme.PRIMARY_BLUE);
+        hintBox.add(hintLabel);
+        cardPanel.add(hintBox);
+
+        rootPanel.add(cardPanel);
+        add(rootPanel);
     }
 
-    /**
-     * Handle login button click
-     */
-    private void handleLogin(ActionEvent e) {
+    private void handleLogin() {
         String username = usernameField.getText().trim();
         String password = new String(passwordField.getPassword());
 
-        // Validate inputs
         if (username.isEmpty() || password.isEmpty()) {
-            showError("Please enter username and password");
+            showError("Please enter both username and password");
             return;
         }
 
-        // Attempt login
         User user = authService.login(username, password, "127.0.0.1");
 
         if (user != null) {
-            // Login successful
-            System.out.println("[LoginFrame] Login successful for: " + username);
-            ThemeManager.removeThemeListener(this);
             clearFields();
-            openMainDashboard(user);
-            dispose(); // Close login window
+            openDashboard(user);
+            dispose();
         } else {
-            // Login failed
             showError("Invalid username or password");
             passwordField.setText("");
             passwordField.requestFocus();
         }
     }
 
-    /**
-     * Show error message
-     */
-    private void showError(String message) {
-        errorLabel.setText(message);
-        System.out.println("[LoginFrame] Login error: " + message);
+    private void showError(String msg) {
+        errorLabel.setText(msg);
     }
 
-    /**
-     * Clear input fields
-     */
     private void clearFields() {
         usernameField.setText("");
         passwordField.setText("");
-        errorLabel.setText("");
+        errorLabel.setText(" ");
     }
 
-    /**
-     * Open main dashboard on successful login
-     */
-    private void openMainDashboard(User user) {
+    private void openDashboard(User user) {
         SwingUtilities.invokeLater(() -> {
             MainDashboard dashboard = new MainDashboard(user);
             dashboard.setVisible(true);
         });
     }
 
-    /**
-     * Main method - start application
-     */
     public static void main(String[] args) {
+        try {
+            UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
+        } catch (Exception ignored) {}
+
         SwingUtilities.invokeLater(() -> {
             LoginFrame frame = new LoginFrame();
             frame.setVisible(true);

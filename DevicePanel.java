@@ -3,7 +3,9 @@ package com.networkmonitor.ui;
 import com.networkmonitor.dao.DeviceDAO;
 import com.networkmonitor.model.Device;
 import com.networkmonitor.model.User;
+import com.networkmonitor.util.UITheme;
 import com.networkmonitor.util.ValidationUtil;
+
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableCellRenderer;
@@ -11,10 +13,9 @@ import java.awt.*;
 import java.util.List;
 
 /**
- * DevicePanel - Device management UI with full CRUD operations
- * Add, edit, delete network devices with validation and real-time updates
+ * DevicePanel - High-contrast, modern UI for Network Device Management
  */
-public class DevicePanel extends JPanel implements ThemeManager.ThemeListener {
+public class DevicePanel extends JPanel {
 
     private User currentUser;
     private DeviceDAO deviceDAO;
@@ -25,15 +26,7 @@ public class DevicePanel extends JPanel implements ThemeManager.ThemeListener {
     private JButton deleteButton;
     private JButton refreshButton;
     private JLabel statusLabel;
-    
-    private JPanel topPanel;
-    private JPanel centerPanel;
-    private JPanel bottomPanel;
-    private JPanel buttonPanel;
-    private JLabel titleLabel;
-    private JScrollPane scrollPane;
 
-    // Table column indices
     private static final int COL_ID = 0;
     private static final int COL_NAME = 1;
     private static final int COL_IP = 2;
@@ -47,324 +40,222 @@ public class DevicePanel extends JPanel implements ThemeManager.ThemeListener {
         this.deviceDAO = new DeviceDAO();
         initializeUI();
         loadDevices();
-        ThemeManager.addThemeListener(this);
-        applyTheme();
-    }
-    
-    @Override
-    public void onThemeChanged() {
-        applyTheme();
-    }
-    
-    private void applyTheme() {
-        setBackground(ThemeManager.getBackgroundColor());
-        topPanel.setBackground(ThemeManager.getBackgroundColor());
-        buttonPanel.setBackground(ThemeManager.getBackgroundColor());
-        centerPanel.setBackground(ThemeManager.getCardColor());
-        bottomPanel.setBackground(ThemeManager.getBorderColor());
-        
-        titleLabel.setForeground(ThemeManager.getTextColor());
-        
-        addButton.setBackground(ThemeManager.getSuccessColor());
-        editButton.setBackground(ThemeManager.getPrimaryColor());
-        deleteButton.setBackground(ThemeManager.getErrorColor());
-        refreshButton.setBackground(ThemeManager.getTextMutedColor());
-        
-        deviceTable.setBackground(ThemeManager.getCardColor());
-        deviceTable.setForeground(ThemeManager.getTextColor());
-        deviceTable.getTableHeader().setBackground(ThemeManager.getPrimaryColor());
-        deviceTable.getTableHeader().setForeground(Color.WHITE);
-        deviceTable.setGridColor(ThemeManager.getBorderColor());
-        
-        scrollPane.setBackground(ThemeManager.getCardColor());
-        scrollPane.getViewport().setBackground(ThemeManager.getCardColor());
-        
-        statusLabel.setForeground(ThemeManager.getTextMutedColor());
-        
-        repaint();
     }
 
-    /**
-     * Initialize UI components
-     */
     private void initializeUI() {
-        setLayout(new BorderLayout(10, 10));
-        setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
+        setLayout(new BorderLayout(14, 14));
+        setBackground(UITheme.BG_CANVAS);
+        setBorder(BorderFactory.createEmptyBorder(16, 18, 16, 18));
 
-        // Top panel - Title and buttons
-        topPanel = createTopPanel();
+        // Top Control Header
+        JPanel topPanel = createTopPanel();
         add(topPanel, BorderLayout.NORTH);
 
-        // Center panel - Table
-        centerPanel = createTablePanel();
+        // Center Table Container
+        JPanel centerPanel = createTablePanel();
         add(centerPanel, BorderLayout.CENTER);
 
-        // Bottom panel - Status
-        bottomPanel = createBottomPanel();
+        // Bottom Status Bar
+        JPanel bottomPanel = createBottomPanel();
         add(bottomPanel, BorderLayout.SOUTH);
     }
 
-    /**
-     * Create top panel with title and action buttons
-     */
     private JPanel createTopPanel() {
-        JPanel pnl = new JPanel(new BorderLayout(10, 0));
+        JPanel topPanel = new JPanel(new BorderLayout(10, 0));
+        topPanel.setOpaque(false);
 
-        // Title
-        titleLabel = new JLabel("📱 Network Device Management");
-        titleLabel.setFont(new Font("Arial", Font.BOLD, 16));
-        pnl.add(titleLabel, BorderLayout.WEST);
+        JLabel titleLabel = new JLabel("📱 Network Device Registry");
+        titleLabel.setFont(UITheme.FONT_HEADER);
+        titleLabel.setForeground(UITheme.TEXT_PRIMARY);
+        topPanel.add(titleLabel, BorderLayout.WEST);
 
-        // Button panel
-        buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
+        buttonPanel.setOpaque(false);
 
-        // Add button
         addButton = new JButton("➕ Add Device");
-        addButton.setFont(new Font("Arial", Font.BOLD, 11));
-        addButton.setForeground(Color.WHITE);
-        addButton.setBorder(BorderFactory.createEmptyBorder(8, 15, 8, 15));
-        addButton.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        UITheme.styleSuccessButton(addButton);
         addButton.setEnabled(isOperatorOrAdmin());
         addButton.addActionListener(e -> showAddDeviceDialog());
         buttonPanel.add(addButton);
 
-        // Edit button
         editButton = new JButton("✏️ Edit");
-        editButton.setFont(new Font("Arial", Font.BOLD, 11));
-        editButton.setForeground(Color.WHITE);
-        editButton.setBorder(BorderFactory.createEmptyBorder(8, 15, 8, 15));
-        editButton.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        UITheme.stylePrimaryButton(editButton);
         editButton.setEnabled(isOperatorOrAdmin());
         editButton.addActionListener(e -> showEditDeviceDialog());
         buttonPanel.add(editButton);
 
-        // Delete button
         deleteButton = new JButton("🗑️ Delete");
-        deleteButton.setFont(new Font("Arial", Font.BOLD, 11));
-        deleteButton.setForeground(Color.WHITE);
-        deleteButton.setBorder(BorderFactory.createEmptyBorder(8, 15, 8, 15));
-        deleteButton.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        UITheme.styleDangerButton(deleteButton);
         deleteButton.setEnabled(isOperatorOrAdmin());
         deleteButton.addActionListener(e -> showDeleteConfirmation());
         buttonPanel.add(deleteButton);
 
-        // Refresh button
         refreshButton = new JButton("🔄 Refresh");
-        refreshButton.setFont(new Font("Arial", Font.BOLD, 11));
-        refreshButton.setForeground(Color.WHITE);
-        refreshButton.setBorder(BorderFactory.createEmptyBorder(8, 15, 8, 15));
-        refreshButton.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        UITheme.styleNeutralButton(refreshButton);
         refreshButton.addActionListener(e -> loadDevices());
         buttonPanel.add(refreshButton);
 
-        pnl.add(buttonPanel, BorderLayout.EAST);
-
-        return pnl;
+        topPanel.add(buttonPanel, BorderLayout.EAST);
+        return topPanel;
     }
 
-    /**
-     * Create center panel with JTable
-     */
     private JPanel createTablePanel() {
-        JPanel pnl = new JPanel(new BorderLayout());
+        JPanel centerPanel = new JPanel(new BorderLayout());
+        UITheme.styleCard(centerPanel);
 
-        // Create table model
         tableModel = new DefaultTableModel() {
             @Override
             public boolean isCellEditable(int row, int column) {
-                return false; // Table is read-only, editing done via dialog
+                return false;
             }
         };
 
         tableModel.setColumnIdentifiers(new String[]{
-                "ID", "Device Name", "IP Address", "MAC Address", "Type", "Location", "Status"
+            "ID", "Device Name", "IP Address", "MAC Address", "Type", "Location", "Status"
         });
 
-        // Create table
         deviceTable = new JTable(tableModel);
-        deviceTable.setFont(new Font("Arial", Font.PLAIN, 11));
-        deviceTable.setRowHeight(25);
-        deviceTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        deviceTable.getTableHeader().setFont(new Font("Arial", Font.BOLD, 11));
+        UITheme.styleTable(deviceTable);
 
-        // Set column widths
         deviceTable.getColumnModel().getColumn(COL_ID).setPreferredWidth(40);
-        deviceTable.getColumnModel().getColumn(COL_NAME).setPreferredWidth(120);
-        deviceTable.getColumnModel().getColumn(COL_IP).setPreferredWidth(100);
-        deviceTable.getColumnModel().getColumn(COL_MAC).setPreferredWidth(110);
-        deviceTable.getColumnModel().getColumn(COL_TYPE).setPreferredWidth(100);
-        deviceTable.getColumnModel().getColumn(COL_LOCATION).setPreferredWidth(100);
-        deviceTable.getColumnModel().getColumn(COL_STATUS).setPreferredWidth(80);
+        deviceTable.getColumnModel().getColumn(COL_NAME).setPreferredWidth(140);
+        deviceTable.getColumnModel().getColumn(COL_IP).setPreferredWidth(110);
+        deviceTable.getColumnModel().getColumn(COL_MAC).setPreferredWidth(130);
+        deviceTable.getColumnModel().getColumn(COL_TYPE).setPreferredWidth(110);
+        deviceTable.getColumnModel().getColumn(COL_LOCATION).setPreferredWidth(120);
+        deviceTable.getColumnModel().getColumn(COL_STATUS).setPreferredWidth(100);
 
-        // Color-coded status renderer
         deviceTable.getColumnModel().getColumn(COL_STATUS).setCellRenderer(new StatusCellRenderer());
 
-        // Scroll pane
-        scrollPane = new JScrollPane(deviceTable);
-        scrollPane.setBorder(null);
-        pnl.add(scrollPane, BorderLayout.CENTER);
+        JScrollPane scrollPane = new JScrollPane(deviceTable);
+        scrollPane.setBorder(BorderFactory.createEmptyBorder());
+        scrollPane.getViewport().setBackground(UITheme.CARD_BG);
+        centerPanel.add(scrollPane, BorderLayout.CENTER);
 
-        return pnl;
+        return centerPanel;
     }
 
-    /**
-     * Create bottom panel with status label
-     */
     private JPanel createBottomPanel() {
-        JPanel pnl = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        pnl.setBorder(BorderFactory.createEmptyBorder(5, 10, 5, 10));
+        JPanel bottomPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        bottomPanel.setOpaque(false);
 
-        statusLabel = new JLabel("Total devices: 0");
-        statusLabel.setFont(new Font("Arial", Font.PLAIN, 10));
-        pnl.add(statusLabel);
+        statusLabel = new JLabel("Total registered devices: 0");
+        statusLabel.setFont(UITheme.FONT_BODY_BOLD);
+        statusLabel.setForeground(UITheme.TEXT_MUTED);
+        bottomPanel.add(statusLabel);
 
-        return pnl;
+        return bottomPanel;
     }
 
-    /**
-     * Load all devices from database
-     */
     private void loadDevices() {
         try {
-            tableModel.setRowCount(0); // Clear table
-
+            tableModel.setRowCount(0);
             List<Device> devices = deviceDAO.getAllDevices();
 
             for (Device device : devices) {
                 tableModel.addRow(new Object[]{
-                        device.getDeviceId(),
-                        device.getDeviceName(),
-                        device.getIpAddress(),
-                        device.getMacAddress(),
-                        device.getDeviceType(),
-                        device.getLocation(),
-                        device.getStatus()
+                    device.getDeviceId(),
+                    device.getDeviceName(),
+                    device.getIpAddress(),
+                    device.getMacAddress() != null ? device.getMacAddress() : "-",
+                    device.getDeviceType(),
+                    device.getLocation() != null ? device.getLocation() : "-",
+                    device.getStatus()
                 });
             }
 
-            statusLabel.setText("Total devices: " + devices.size());
-            System.out.println("[DevicePanel] Loaded " + devices.size() + " devices");
-
+            statusLabel.setText("Total registered devices: " + devices.size());
         } catch (Exception e) {
             showError("Error loading devices: " + e.getMessage());
-            System.err.println("[DevicePanel] Error loading devices: " + e.getMessage());
         }
     }
 
-    /**
-     * Show add device dialog
-     */
     private void showAddDeviceDialog() {
         JDialog dialog = new JDialog((Frame) SwingUtilities.getWindowAncestor(this), "Add New Device", true);
-        dialog.setSize(500, 400);
+        dialog.setSize(440, 420);
         dialog.setLocationRelativeTo(SwingUtilities.getWindowAncestor(this));
 
         JPanel mainPanel = new JPanel();
         mainPanel.setLayout(new BoxLayout(mainPanel, BoxLayout.Y_AXIS));
-        mainPanel.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
-        mainPanel.setBackground(ThemeManager.getBackgroundColor());
+        mainPanel.setBorder(BorderFactory.createEmptyBorder(16, 20, 16, 20));
+        mainPanel.setBackground(UITheme.CARD_BG);
 
-        // Device Name
-        mainPanel.add(createLabel("Device Name:"));
         JTextField nameField = new JTextField();
-        nameField.setMaximumSize(new Dimension(Integer.MAX_VALUE, 30));
-        mainPanel.add(nameField);
-        mainPanel.add(Box.createVerticalStrut(10));
-
-        // IP Address
-        mainPanel.add(createLabel("IP Address:"));
         JTextField ipField = new JTextField();
-        ipField.setMaximumSize(new Dimension(Integer.MAX_VALUE, 30));
-        mainPanel.add(ipField);
-        mainPanel.add(Box.createVerticalStrut(10));
-
-        // MAC Address
-        mainPanel.add(createLabel("MAC Address:"));
         JTextField macField = new JTextField();
-        macField.setMaximumSize(new Dimension(Integer.MAX_VALUE, 30));
-        mainPanel.add(macField);
-        mainPanel.add(Box.createVerticalStrut(10));
-
-        // Device Type
-        mainPanel.add(createLabel("Device Type:"));
         JComboBox<String> typeCombo = new JComboBox<>(new String[]{"ROUTER", "SWITCH", "SERVER", "ACCESS_POINT", "FIREWALL"});
-        typeCombo.setMaximumSize(new Dimension(Integer.MAX_VALUE, 30));
-        mainPanel.add(typeCombo);
-        mainPanel.add(Box.createVerticalStrut(10));
-
-        // Location
-        mainPanel.add(createLabel("Location:"));
         JTextField locationField = new JTextField();
-        locationField.setMaximumSize(new Dimension(Integer.MAX_VALUE, 30));
-        mainPanel.add(locationField);
-        mainPanel.add(Box.createVerticalStrut(20));
 
-        // Error label
-        JLabel errorLabel = new JLabel();
-        errorLabel.setFont(new Font("Arial", Font.PLAIN, 10));
-        errorLabel.setForeground(ThemeManager.getErrorColor());
+        UITheme.styleTextField(nameField);
+        UITheme.styleTextField(ipField);
+        UITheme.styleTextField(macField);
+        UITheme.styleTextField(locationField);
+
+        mainPanel.add(createFieldRow("Device Name *", nameField));
+        mainPanel.add(createFieldRow("IP Address *", ipField));
+        mainPanel.add(createFieldRow("MAC Address", macField));
+        mainPanel.add(createFieldRow("Device Type", typeCombo));
+        mainPanel.add(createFieldRow("Location", locationField));
+
+        JLabel errorLabel = new JLabel(" ");
+        errorLabel.setFont(UITheme.FONT_SMALL);
+        errorLabel.setForeground(UITheme.DANGER_RED);
         mainPanel.add(errorLabel);
 
-        // Buttons
-        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-        buttonPanel.setBackground(ThemeManager.getBackgroundColor());
+        JPanel btnRow = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
+        btnRow.setOpaque(false);
 
-        JButton saveButton = new JButton("Save");
-        saveButton.setBackground(ThemeManager.getSuccessColor());
-        saveButton.setForeground(Color.WHITE);
-        saveButton.addActionListener(e -> {
+        JButton saveBtn = new JButton("Save Device");
+        UITheme.styleSuccessButton(saveBtn);
+
+        JButton cancelBtn = new JButton("Cancel");
+        UITheme.styleNeutralButton(cancelBtn);
+        cancelBtn.addActionListener(e -> dialog.dispose());
+
+        saveBtn.addActionListener(e -> {
             String name = nameField.getText().trim();
             String ip = ipField.getText().trim();
             String mac = macField.getText().trim();
             String type = (String) typeCombo.getSelectedItem();
             String location = locationField.getText().trim();
 
-            // Validate inputs
             if (name.isEmpty() || ip.isEmpty()) {
-                errorLabel.setText("Device name and IP address are required");
+                errorLabel.setText("Device Name and IP Address are required");
                 return;
             }
 
             if (!ValidationUtil.isValidIPv4(ip)) {
-                errorLabel.setText("Invalid IP address format");
+                errorLabel.setText("Invalid IPv4 address format (e.g. 192.168.1.1)");
                 return;
             }
 
             if (!mac.isEmpty() && !ValidationUtil.isValidMac(mac)) {
-                errorLabel.setText("Invalid MAC address format");
+                errorLabel.setText("Invalid MAC address format (e.g. AA:BB:CC:DD:EE:FF)");
                 return;
             }
 
-            // Create device
             Device device = new Device(name, ip, mac, type, location, currentUser.getUserId());
             if (deviceDAO.addDevice(device)) {
                 loadDevices();
                 dialog.dispose();
                 JOptionPane.showMessageDialog(DevicePanel.this, "Device added successfully!", "Success", JOptionPane.INFORMATION_MESSAGE);
             } else {
-                errorLabel.setText("Failed to add device");
+                errorLabel.setText("Failed to save device to database");
             }
         });
-        buttonPanel.add(saveButton);
 
-        JButton cancelButton = new JButton("Cancel");
-        cancelButton.setBackground(ThemeManager.getTextMutedColor());
-        cancelButton.setForeground(Color.WHITE);
-        cancelButton.addActionListener(e -> dialog.dispose());
-        buttonPanel.add(cancelButton);
+        btnRow.add(saveBtn);
+        btnRow.add(cancelBtn);
+        mainPanel.add(btnRow);
 
-        mainPanel.add(buttonPanel);
         dialog.add(mainPanel);
         dialog.setVisible(true);
     }
 
-    /**
-     * Show edit device dialog
-     */
     private void showEditDeviceDialog() {
         int selectedRow = deviceTable.getSelectedRow();
         if (selectedRow == -1) {
-            showWarning("Please select a device to edit");
+            showWarning("Please select a device from the table to edit.");
             return;
         }
 
@@ -372,70 +263,53 @@ public class DevicePanel extends JPanel implements ThemeManager.ThemeListener {
         Device device = deviceDAO.getDeviceById(deviceId);
 
         if (device == null) {
-            showError("Could not load device");
+            showError("Could not retrieve device details.");
             return;
         }
 
-        JDialog dialog = new JDialog((Frame) SwingUtilities.getWindowAncestor(this), "Edit Device", true);
-        dialog.setSize(500, 400);
+        JDialog dialog = new JDialog((Frame) SwingUtilities.getWindowAncestor(this), "Edit Device — " + device.getDeviceName(), true);
+        dialog.setSize(440, 440);
         dialog.setLocationRelativeTo(SwingUtilities.getWindowAncestor(this));
 
         JPanel mainPanel = new JPanel();
         mainPanel.setLayout(new BoxLayout(mainPanel, BoxLayout.Y_AXIS));
-        mainPanel.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
-        mainPanel.setBackground(ThemeManager.getBackgroundColor());
+        mainPanel.setBorder(BorderFactory.createEmptyBorder(16, 20, 16, 20));
+        mainPanel.setBackground(UITheme.CARD_BG);
 
-        // Device Name
-        mainPanel.add(createLabel("Device Name:"));
         JTextField nameField = new JTextField(device.getDeviceName());
-        nameField.setMaximumSize(new Dimension(Integer.MAX_VALUE, 30));
-        mainPanel.add(nameField);
-        mainPanel.add(Box.createVerticalStrut(10));
-
-        // MAC Address
-        mainPanel.add(createLabel("MAC Address:"));
         JTextField macField = new JTextField(device.getMacAddress() != null ? device.getMacAddress() : "");
-        macField.setMaximumSize(new Dimension(Integer.MAX_VALUE, 30));
-        mainPanel.add(macField);
-        mainPanel.add(Box.createVerticalStrut(10));
-
-        // Device Type
-        mainPanel.add(createLabel("Device Type:"));
         JComboBox<String> typeCombo = new JComboBox<>(new String[]{"ROUTER", "SWITCH", "SERVER", "ACCESS_POINT", "FIREWALL"});
         typeCombo.setSelectedItem(device.getDeviceType());
-        typeCombo.setMaximumSize(new Dimension(Integer.MAX_VALUE, 30));
-        mainPanel.add(typeCombo);
-        mainPanel.add(Box.createVerticalStrut(10));
-
-        // Location
-        mainPanel.add(createLabel("Location:"));
         JTextField locationField = new JTextField(device.getLocation() != null ? device.getLocation() : "");
-        locationField.setMaximumSize(new Dimension(Integer.MAX_VALUE, 30));
-        mainPanel.add(locationField);
-        mainPanel.add(Box.createVerticalStrut(10));
-
-        // Status
-        mainPanel.add(createLabel("Status:"));
         JComboBox<String> statusCombo = new JComboBox<>(new String[]{"ONLINE", "OFFLINE", "WARNING"});
         statusCombo.setSelectedItem(device.getStatus());
-        statusCombo.setMaximumSize(new Dimension(Integer.MAX_VALUE, 30));
-        mainPanel.add(statusCombo);
-        mainPanel.add(Box.createVerticalStrut(20));
 
-        // Error label
-        JLabel errorLabel = new JLabel();
-        errorLabel.setFont(new Font("Arial", Font.PLAIN, 10));
-        errorLabel.setForeground(ThemeManager.getErrorColor());
+        UITheme.styleTextField(nameField);
+        UITheme.styleTextField(macField);
+        UITheme.styleTextField(locationField);
+
+        mainPanel.add(createFieldRow("Device Name *", nameField));
+        mainPanel.add(createFieldRow("MAC Address", macField));
+        mainPanel.add(createFieldRow("Device Type", typeCombo));
+        mainPanel.add(createFieldRow("Location", locationField));
+        mainPanel.add(createFieldRow("Status", statusCombo));
+
+        JLabel errorLabel = new JLabel(" ");
+        errorLabel.setFont(UITheme.FONT_SMALL);
+        errorLabel.setForeground(UITheme.DANGER_RED);
         mainPanel.add(errorLabel);
 
-        // Buttons
-        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-        buttonPanel.setBackground(ThemeManager.getBackgroundColor());
+        JPanel btnRow = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
+        btnRow.setOpaque(false);
 
-        JButton saveButton = new JButton("Save");
-        saveButton.setBackground(ThemeManager.getSuccessColor());
-        saveButton.setForeground(Color.WHITE);
-        saveButton.addActionListener(e -> {
+        JButton saveBtn = new JButton("Update Device");
+        UITheme.stylePrimaryButton(saveBtn);
+
+        JButton cancelBtn = new JButton("Cancel");
+        UITheme.styleNeutralButton(cancelBtn);
+        cancelBtn.addActionListener(e -> dialog.dispose());
+
+        saveBtn.addActionListener(e -> {
             String name = nameField.getText().trim();
             String mac = macField.getText().trim();
             String type = (String) typeCombo.getSelectedItem();
@@ -443,7 +317,7 @@ public class DevicePanel extends JPanel implements ThemeManager.ThemeListener {
             String status = (String) statusCombo.getSelectedItem();
 
             if (name.isEmpty()) {
-                errorLabel.setText("Device name is required");
+                errorLabel.setText("Device Name cannot be empty");
                 return;
             }
 
@@ -466,88 +340,81 @@ public class DevicePanel extends JPanel implements ThemeManager.ThemeListener {
                 errorLabel.setText("Failed to update device");
             }
         });
-        buttonPanel.add(saveButton);
 
-        JButton cancelButton = new JButton("Cancel");
-        cancelButton.setBackground(ThemeManager.getTextMutedColor());
-        cancelButton.setForeground(Color.WHITE);
-        cancelButton.addActionListener(e -> dialog.dispose());
-        buttonPanel.add(cancelButton);
+        btnRow.add(saveBtn);
+        btnRow.add(cancelBtn);
+        mainPanel.add(btnRow);
 
-        mainPanel.add(buttonPanel);
         dialog.add(mainPanel);
         dialog.setVisible(true);
     }
 
-    /**
-     * Show delete confirmation
-     */
     private void showDeleteConfirmation() {
         int selectedRow = deviceTable.getSelectedRow();
         if (selectedRow == -1) {
-            showWarning("Please select a device to delete");
+            showWarning("Please select a device to delete.");
             return;
         }
 
         int deviceId = (Integer) tableModel.getValueAt(selectedRow, COL_ID);
         String deviceName = (String) tableModel.getValueAt(selectedRow, COL_NAME);
 
-        int result = JOptionPane.showConfirmDialog(this,
-                "Are you sure you want to delete device '" + deviceName + "'?\nThis action cannot be undone.",
-                "Delete Device",
-                JOptionPane.YES_NO_OPTION,
-                JOptionPane.WARNING_MESSAGE);
+        int confirm = JOptionPane.showConfirmDialog(
+            this,
+            "Are you sure you want to delete device '" + deviceName + "'?\nThis will remove associated metrics.",
+            "Confirm Deletion",
+            JOptionPane.YES_NO_OPTION,
+            JOptionPane.WARNING_MESSAGE
+        );
 
-        if (result == JOptionPane.YES_OPTION) {
+        if (confirm == JOptionPane.YES_OPTION) {
             if (deviceDAO.deleteDevice(deviceId)) {
                 loadDevices();
-                JOptionPane.showMessageDialog(this, "Device deleted successfully!", "Success", JOptionPane.INFORMATION_MESSAGE);
+                JOptionPane.showMessageDialog(this, "Device deleted successfully.", "Success", JOptionPane.INFORMATION_MESSAGE);
             } else {
-                showError("Failed to delete device");
+                showError("Failed to delete device.");
             }
         }
     }
 
-    /**
-     * Check if user is operator or admin
-     */
+    private JPanel createFieldRow(String labelText, JComponent comp) {
+        JPanel p = new JPanel();
+        p.setLayout(new BoxLayout(p, BoxLayout.Y_AXIS));
+        p.setOpaque(false);
+
+        JLabel lbl = new JLabel(labelText);
+        lbl.setFont(UITheme.FONT_BODY_BOLD);
+        lbl.setForeground(UITheme.TEXT_PRIMARY);
+
+        p.add(lbl);
+        p.add(Box.createVerticalStrut(3));
+        comp.setMaximumSize(new Dimension(Integer.MAX_VALUE, 32));
+        p.add(comp);
+        p.add(Box.createVerticalStrut(8));
+        return p;
+    }
+
     private boolean isOperatorOrAdmin() {
         String role = currentUser.getRole();
         return "ADMIN".equals(role) || "OPERATOR".equals(role);
     }
 
-    /**
-     * Create label
-     */
-    private JLabel createLabel(String text) {
-        JLabel label = new JLabel(text);
-        label.setFont(new Font("Arial", Font.BOLD, 11));
-        label.setForeground(ThemeManager.getTextColor());
-        return label;
+    private void showError(String msg) {
+        JOptionPane.showMessageDialog(this, msg, "Error", JOptionPane.ERROR_MESSAGE);
+    }
+
+    private void showWarning(String msg) {
+        JOptionPane.showMessageDialog(this, msg, "Warning", JOptionPane.WARNING_MESSAGE);
     }
 
     /**
-     * Show error message
-     */
-    private void showError(String message) {
-        JOptionPane.showMessageDialog(this, message, "Error", JOptionPane.ERROR_MESSAGE);
-    }
-
-    /**
-     * Show warning message
-     */
-    private void showWarning(String message) {
-        JOptionPane.showMessageDialog(this, message, "Warning", JOptionPane.WARNING_MESSAGE);
-    }
-
-    /**
-     * Custom renderer for status column with color coding
+     * High contrast cell renderer for Status Column
      */
     private static class StatusCellRenderer extends JLabel implements TableCellRenderer {
         StatusCellRenderer() {
             setOpaque(true);
             setHorizontalAlignment(CENTER);
-            setFont(new Font("Arial", Font.BOLD, 11));
+            setFont(UITheme.FONT_BODY_BOLD);
         }
 
         @Override
@@ -556,32 +423,25 @@ public class DevicePanel extends JPanel implements ThemeManager.ThemeListener {
             String status = (String) value;
 
             if ("ONLINE".equals(status)) {
-                setBackground(ThemeManager.getSuccessBgColor());
-                setForeground(ThemeManager.getSuccessColor());
-                setText("🟢 " + status);
+                setBackground(new Color(220, 252, 231));
+                setForeground(UITheme.SUCCESS_GREEN);
+                setText("🟢 ONLINE");
             } else if ("OFFLINE".equals(status)) {
-                setBackground(ThemeManager.getErrorBgColor());
-                setForeground(ThemeManager.getErrorColor());
-                setText("🔴 " + status);
-            } else if ("WARNING".equals(status)) {
-                setBackground(ThemeManager.getWarningBgColor());
-                setForeground(ThemeManager.getWarningColor());
-                setText("🟡 " + status);
+                setBackground(new Color(254, 226, 226));
+                setForeground(UITheme.DANGER_RED);
+                setText("🔴 OFFLINE");
+            } else {
+                setBackground(new Color(254, 243, 199));
+                setForeground(UITheme.WARNING_ORANGE);
+                setText("🟡 WARNING");
             }
 
             if (isSelected) {
-                setBackground(ThemeManager.getPrimaryColor());
-                setForeground(Color.WHITE);
-                setText(status);
+                setBackground(UITheme.PRIMARY_BLUE);
+                setForeground(UITheme.TEXT_LIGHT);
             }
 
             return this;
         }
-    }
-
-    @Override
-    public void removeNotify() {
-        super.removeNotify();
-        ThemeManager.removeThemeListener(this);
     }
 }
