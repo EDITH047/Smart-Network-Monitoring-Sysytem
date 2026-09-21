@@ -16,6 +16,11 @@ public class Device {
     private String status; // ONLINE, OFFLINE, WARNING
     private int addedBy; // user_id who added this device
     private Timestamp createdAt;
+    
+    // New fields
+    private String networkInterface;
+    private String description;
+    private Timestamp lastSeen;
 
     // Constructors
     public Device() {
@@ -116,6 +121,30 @@ public class Device {
 
     public void setCreatedAt(Timestamp createdAt) {
         this.createdAt = createdAt;
+    }
+
+    public String getNetworkInterface() {
+        return networkInterface;
+    }
+
+    public void setNetworkInterface(String networkInterface) {
+        this.networkInterface = networkInterface;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
+    }
+
+    public Timestamp getLastSeen() {
+        return lastSeen;
+    }
+
+    public void setLastSeen(Timestamp lastSeen) {
+        this.lastSeen = lastSeen;
     }
 
     @Override

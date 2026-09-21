@@ -18,8 +18,9 @@ public class DatabaseConfig {
     private static final String DB_PASSWORD = "";
     private static final String DB_DRIVER = "com.mysql.cj.jdbc.Driver";
 
-    // Singleton instance
-    private static Connection connection;
+    // Singleton instances
+    private static Connection realConnection;
+    private static Connection proxyConnection;
 
     /**
      * Private constructor to prevent instantiation
@@ -29,6 +30,7 @@ public class DatabaseConfig {
 
     /**
      * Get database connection (singleton pattern)
+     * Returns a proxy that suppresses close() calls from try-with-resources blocks.
      *
      * @return Connection object to the database
      * @throws SQLException if connection fails
@@ -39,12 +41,29 @@ public class DatabaseConfig {
             Class.forName(DB_DRIVER);
 
             // Check if connection is null or closed
-            if (connection == null || connection.isClosed()) {
-                connection = DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD);
+            if (realConnection == null || realConnection.isClosed()) {
+                realConnection = DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD);
+                
+                // Create a proxy to ignore close() calls from DAOs
+                proxyConnection = (Connection) java.lang.reflect.Proxy.newProxyInstance(
+                    Connection.class.getClassLoader(),
+                    new Class[]{Connection.class},
+                    (proxy, method, args) -> {
+                        if ("close".equals(method.getName())) {
+                            return null; // Ignore close() to keep singleton alive
+                        }
+                        try {
+                            return method.invoke(realConnection, args);
+                        } catch (java.lang.reflect.InvocationTargetException e) {
+                            throw e.getCause(); // Unwrap SQL exceptions
+                        }
+                    }
+                );
+                
                 System.out.println("[DatabaseConfig] New connection established");
             }
 
-            return connection;
+            return proxyConnection;
 
         } catch (ClassNotFoundException e) {
             System.err.println("[DatabaseConfig] MySQL Driver not found: " + e.getMessage());
@@ -60,9 +79,9 @@ public class DatabaseConfig {
      * Close the database connection (call on application shutdown)
      */
     public static void closeConnection() {
-        if (connection != null) {
+        if (realConnection != null) {
             try {
-                connection.close();
+                realConnection.close();
                 System.out.println("[DatabaseConfig] Connection closed");
             } catch (SQLException e) {
                 System.err.println("[DatabaseConfig] Error closing connection: " + e.getMessage());
@@ -77,7 +96,7 @@ public class DatabaseConfig {
      */
     public static boolean isConnected() {
         try {
-            return connection != null && !connection.isClosed();
+            return realConnection != null && !realConnection.isClosed();
         } catch (SQLException e) {
             return false;
         }
@@ -90,7 +109,8 @@ public class DatabaseConfig {
      */
     public static void reconnect() throws SQLException {
         closeConnection();
-        connection = null;
+        realConnection = null;
+        proxyConnection = null;
         getConnection();
     }
 }

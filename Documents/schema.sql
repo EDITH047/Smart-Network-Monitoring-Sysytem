@@ -26,9 +26,12 @@ CREATE TABLE devices (
     device_name VARCHAR(100) NOT NULL,
     ip_address VARCHAR(45) NOT NULL,
     mac_address VARCHAR(17),
-    device_type ENUM('ROUTER', 'SWITCH', 'SERVER', 'ACCESS_POINT', 'FIREWALL') NOT NULL,
+    device_type VARCHAR(50) NOT NULL,
     location VARCHAR(100),
     status ENUM('ONLINE', 'OFFLINE', 'WARNING') DEFAULT 'OFFLINE',
+    network_interface VARCHAR(50),
+    description TEXT,
+    last_seen TIMESTAMP NULL,
     added_by INT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (added_by) REFERENCES users(user_id) ON DELETE SET NULL
@@ -147,9 +150,7 @@ VALUES ('admin', '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720
 -- ==========================================================
 -- Sample devices for testing
 -- ==========================================================
-INSERT INTO devices (device_name, ip_address, mac_address, device_type, location, status, added_by) VALUES
-('Core Router', '192.168.1.1', 'AA:BB:CC:DD:EE:01', 'ROUTER', 'Server Room A', 'ONLINE', 1),
-('Main Switch', '192.168.1.2', 'AA:BB:CC:DD:EE:02', 'SWITCH', 'Server Room A', 'ONLINE', 1),
-('Web Server', '192.168.1.10', 'AA:BB:CC:DD:EE:03', 'SERVER', 'Data Center', 'ONLINE', 1),
-('Wi-Fi AP Floor 1', '192.168.1.20', 'AA:BB:CC:DD:EE:04', 'ACCESS_POINT', 'Floor 1', 'WARNING', 1),
-('Edge Firewall', '192.168.1.254', 'AA:BB:CC:DD:EE:05', 'FIREWALL', 'DMZ', 'ONLINE', 1);
+('Home Gateway Router', '192.168.0.1', '08:8A:F1:6C:03:A0', 'ROUTER', 'Wired Network', 'ONLINE', 1),
+('Edith - Local PC', '192.168.0.118', '7C:57:58:6D:C9:AF', 'PC', 'Wired Network', 'ONLINE', 1),
+('Mobile Device 1', '192.168.0.161', 'B6:97:13:10:FE:89', 'MOBILE', 'Wi-Fi Network', 'ONLINE', 1),
+('Mobile Device 2', '192.168.0.219', 'C6:DB:36:D5:4A:A3', 'MOBILE', 'Wi-Fi Network', 'ONLINE', 1);

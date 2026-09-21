@@ -90,6 +90,11 @@ public class DevicePanel extends JPanel {
         deleteButton.addActionListener(e -> showDeleteConfirmation());
         buttonPanel.add(deleteButton);
 
+        JButton wifiButton = new JButton("📡 Scan WiFi");
+        UITheme.stylePrimaryButton(wifiButton);
+        wifiButton.addActionListener(e -> showWifiScanDialog());
+        buttonPanel.add(wifiButton);
+
         refreshButton = new JButton("🔄 Refresh");
         UITheme.styleNeutralButton(refreshButton);
         refreshButton.addActionListener(e -> loadDevices());
@@ -171,85 +176,19 @@ public class DevicePanel extends JPanel {
     }
 
     private void showAddDeviceDialog() {
-        JDialog dialog = new JDialog((Frame) SwingUtilities.getWindowAncestor(this), "Add New Device", true);
-        dialog.setSize(440, 420);
-        dialog.setLocationRelativeTo(SwingUtilities.getWindowAncestor(this));
-
-        JPanel mainPanel = new JPanel();
-        mainPanel.setLayout(new BoxLayout(mainPanel, BoxLayout.Y_AXIS));
-        mainPanel.setBorder(BorderFactory.createEmptyBorder(16, 20, 16, 20));
-        mainPanel.setBackground(UITheme.CARD_BG);
-
-        JTextField nameField = new JTextField();
-        JTextField ipField = new JTextField();
-        JTextField macField = new JTextField();
-        JComboBox<String> typeCombo = new JComboBox<>(new String[]{"ROUTER", "SWITCH", "SERVER", "ACCESS_POINT", "FIREWALL"});
-        JTextField locationField = new JTextField();
-
-        UITheme.styleTextField(nameField);
-        UITheme.styleTextField(ipField);
-        UITheme.styleTextField(macField);
-        UITheme.styleTextField(locationField);
-
-        mainPanel.add(createFieldRow("Device Name *", nameField));
-        mainPanel.add(createFieldRow("IP Address *", ipField));
-        mainPanel.add(createFieldRow("MAC Address", macField));
-        mainPanel.add(createFieldRow("Device Type", typeCombo));
-        mainPanel.add(createFieldRow("Location", locationField));
-
-        JLabel errorLabel = new JLabel(" ");
-        errorLabel.setFont(UITheme.FONT_SMALL);
-        errorLabel.setForeground(UITheme.DANGER_RED);
-        mainPanel.add(errorLabel);
-
-        JPanel btnRow = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
-        btnRow.setOpaque(false);
-
-        JButton saveBtn = new JButton("Save Device");
-        UITheme.styleSuccessButton(saveBtn);
-
-        JButton cancelBtn = new JButton("Cancel");
-        UITheme.styleNeutralButton(cancelBtn);
-        cancelBtn.addActionListener(e -> dialog.dispose());
-
-        saveBtn.addActionListener(e -> {
-            String name = nameField.getText().trim();
-            String ip = ipField.getText().trim();
-            String mac = macField.getText().trim();
-            String type = (String) typeCombo.getSelectedItem();
-            String location = locationField.getText().trim();
-
-            if (name.isEmpty() || ip.isEmpty()) {
-                errorLabel.setText("Device Name and IP Address are required");
-                return;
-            }
-
-            if (!ValidationUtil.isValidIPv4(ip)) {
-                errorLabel.setText("Invalid IPv4 address format (e.g. 192.168.1.1)");
-                return;
-            }
-
-            if (!mac.isEmpty() && !ValidationUtil.isValidMac(mac)) {
-                errorLabel.setText("Invalid MAC address format (e.g. AA:BB:CC:DD:EE:FF)");
-                return;
-            }
-
-            Device device = new Device(name, ip, mac, type, location, currentUser.getUserId());
-            if (deviceDAO.addDevice(device)) {
-                loadDevices();
-                dialog.dispose();
-                JOptionPane.showMessageDialog(DevicePanel.this, "Device added successfully!", "Success", JOptionPane.INFORMATION_MESSAGE);
-            } else {
-                errorLabel.setText("Failed to save device to database");
-            }
-        });
-
-        btnRow.add(saveBtn);
-        btnRow.add(cancelBtn);
-        mainPanel.add(btnRow);
-
-        dialog.add(mainPanel);
+        DeviceDialog dialog = new DeviceDialog((Frame) SwingUtilities.getWindowAncestor(this));
         dialog.setVisible(true);
+
+        if (dialog.isConfirmed()) {
+            Device newDevice = dialog.getDevice();
+            newDevice.setAddedBy(currentUser.getUserId());
+            if (deviceDAO.addDevice(newDevice)) {
+                loadDevices();
+                JOptionPane.showMessageDialog(this, "Device added successfully!", "Success", JOptionPane.INFORMATION_MESSAGE);
+            } else {
+                showError("Failed to save device to database");
+            }
+        }
     }
 
     private void showEditDeviceDialog() {
@@ -267,86 +206,18 @@ public class DevicePanel extends JPanel {
             return;
         }
 
-        JDialog dialog = new JDialog((Frame) SwingUtilities.getWindowAncestor(this), "Edit Device — " + device.getDeviceName(), true);
-        dialog.setSize(440, 440);
-        dialog.setLocationRelativeTo(SwingUtilities.getWindowAncestor(this));
-
-        JPanel mainPanel = new JPanel();
-        mainPanel.setLayout(new BoxLayout(mainPanel, BoxLayout.Y_AXIS));
-        mainPanel.setBorder(BorderFactory.createEmptyBorder(16, 20, 16, 20));
-        mainPanel.setBackground(UITheme.CARD_BG);
-
-        JTextField nameField = new JTextField(device.getDeviceName());
-        JTextField macField = new JTextField(device.getMacAddress() != null ? device.getMacAddress() : "");
-        JComboBox<String> typeCombo = new JComboBox<>(new String[]{"ROUTER", "SWITCH", "SERVER", "ACCESS_POINT", "FIREWALL"});
-        typeCombo.setSelectedItem(device.getDeviceType());
-        JTextField locationField = new JTextField(device.getLocation() != null ? device.getLocation() : "");
-        JComboBox<String> statusCombo = new JComboBox<>(new String[]{"ONLINE", "OFFLINE", "WARNING"});
-        statusCombo.setSelectedItem(device.getStatus());
-
-        UITheme.styleTextField(nameField);
-        UITheme.styleTextField(macField);
-        UITheme.styleTextField(locationField);
-
-        mainPanel.add(createFieldRow("Device Name *", nameField));
-        mainPanel.add(createFieldRow("MAC Address", macField));
-        mainPanel.add(createFieldRow("Device Type", typeCombo));
-        mainPanel.add(createFieldRow("Location", locationField));
-        mainPanel.add(createFieldRow("Status", statusCombo));
-
-        JLabel errorLabel = new JLabel(" ");
-        errorLabel.setFont(UITheme.FONT_SMALL);
-        errorLabel.setForeground(UITheme.DANGER_RED);
-        mainPanel.add(errorLabel);
-
-        JPanel btnRow = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
-        btnRow.setOpaque(false);
-
-        JButton saveBtn = new JButton("Update Device");
-        UITheme.stylePrimaryButton(saveBtn);
-
-        JButton cancelBtn = new JButton("Cancel");
-        UITheme.styleNeutralButton(cancelBtn);
-        cancelBtn.addActionListener(e -> dialog.dispose());
-
-        saveBtn.addActionListener(e -> {
-            String name = nameField.getText().trim();
-            String mac = macField.getText().trim();
-            String type = (String) typeCombo.getSelectedItem();
-            String location = locationField.getText().trim();
-            String status = (String) statusCombo.getSelectedItem();
-
-            if (name.isEmpty()) {
-                errorLabel.setText("Device Name cannot be empty");
-                return;
-            }
-
-            if (!mac.isEmpty() && !ValidationUtil.isValidMac(mac)) {
-                errorLabel.setText("Invalid MAC address format");
-                return;
-            }
-
-            device.setDeviceName(name);
-            device.setMacAddress(mac);
-            device.setDeviceType(type);
-            device.setLocation(location);
-            device.setStatus(status);
-
-            if (deviceDAO.updateDevice(device)) {
-                loadDevices();
-                dialog.dispose();
-                JOptionPane.showMessageDialog(DevicePanel.this, "Device updated successfully!", "Success", JOptionPane.INFORMATION_MESSAGE);
-            } else {
-                errorLabel.setText("Failed to update device");
-            }
-        });
-
-        btnRow.add(saveBtn);
-        btnRow.add(cancelBtn);
-        mainPanel.add(btnRow);
-
-        dialog.add(mainPanel);
+        DeviceDialog dialog = new DeviceDialog((Frame) SwingUtilities.getWindowAncestor(this), device);
         dialog.setVisible(true);
+
+        if (dialog.isConfirmed()) {
+            Device updatedDevice = dialog.getDevice();
+            if (deviceDAO.updateDevice(updatedDevice)) {
+                loadDevices();
+                JOptionPane.showMessageDialog(this, "Device updated successfully!", "Success", JOptionPane.INFORMATION_MESSAGE);
+            } else {
+                showError("Failed to update device");
+            }
+        }
     }
 
     private void showDeleteConfirmation() {
@@ -375,6 +246,85 @@ public class DevicePanel extends JPanel {
                 showError("Failed to delete device.");
             }
         }
+    }
+
+    private void showWifiScanDialog() {
+        JDialog dialog = new JDialog((Frame) SwingUtilities.getWindowAncestor(this), "Available WiFi Networks", true);
+        dialog.setSize(600, 400);
+        dialog.setLocationRelativeTo(SwingUtilities.getWindowAncestor(this));
+        dialog.setLayout(new BorderLayout());
+
+        JPanel headerPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        headerPanel.setBackground(Color.WHITE);
+        headerPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+        JLabel title = new JLabel("📡 Scanning nearby networks...");
+        title.setFont(UITheme.FONT_HEADER);
+        headerPanel.add(title);
+        dialog.add(headerPanel, BorderLayout.NORTH);
+
+        DefaultTableModel wifiModel = new DefaultTableModel(new String[]{"SSID", "BSSID", "Signal", "Channel", "Security", "Connected"}, 0) {
+            @Override
+            public boolean isCellEditable(int row, int column) { return false; }
+        };
+        JTable wifiTable = new JTable(wifiModel);
+        UITheme.styleTable(wifiTable);
+        JScrollPane scrollPane = new JScrollPane(wifiTable);
+        scrollPane.getViewport().setBackground(Color.WHITE);
+        dialog.add(scrollPane, BorderLayout.CENTER);
+
+        JPanel btnPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        btnPanel.setBackground(Color.WHITE);
+        JButton closeBtn = new JButton("Close");
+        UITheme.styleNeutralButton(closeBtn);
+        closeBtn.addActionListener(e -> dialog.dispose());
+        
+        JButton refreshBtn = new JButton("Scan Again");
+        UITheme.stylePrimaryButton(refreshBtn);
+        
+        btnPanel.add(refreshBtn);
+        btnPanel.add(closeBtn);
+        dialog.add(btnPanel, BorderLayout.SOUTH);
+
+        // Perform scan on background thread
+        Runnable scanTask = () -> {
+            refreshBtn.setEnabled(false);
+            title.setText("📡 Scanning nearby networks... (This may take a few seconds)");
+            wifiModel.setRowCount(0);
+            
+            new SwingWorker<List<com.networkmonitor.util.NetworkAdapter.AvailableNetwork>, Void>() {
+                @Override
+                protected List<com.networkmonitor.util.NetworkAdapter.AvailableNetwork> doInBackground() {
+                    return com.networkmonitor.util.NetworkAdapter.scanAvailableNetworks();
+                }
+
+                @Override
+                protected void done() {
+                    try {
+                        List<com.networkmonitor.util.NetworkAdapter.AvailableNetwork> networks = get();
+                        for (var net : networks) {
+                            wifiModel.addRow(new Object[]{
+                                net.ssid,
+                                net.bssid,
+                                net.signalStrength + "%",
+                                net.channel,
+                                net.securityType,
+                                net.isConnected ? "🟢 YES" : "⚪ NO"
+                            });
+                        }
+                        title.setText("📡 Found " + networks.size() + " networks");
+                    } catch (Exception ex) {
+                        title.setText("❌ Error scanning networks");
+                        JOptionPane.showMessageDialog(dialog, "Failed to scan networks: " + ex.getMessage());
+                    }
+                    refreshBtn.setEnabled(true);
+                }
+            }.execute();
+        };
+
+        refreshBtn.addActionListener(e -> scanTask.run());
+        scanTask.run(); // initial scan
+
+        dialog.setVisible(true);
     }
 
     private JPanel createFieldRow(String labelText, JComponent comp) {

@@ -26,36 +26,20 @@ class OptimizationPanel extends JPanel {
 
     private void initializeUI() {
         setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
+        setBackground(new java.awt.Color(241, 245, 249));
+        setBorder(javax.swing.BorderFactory.createEmptyBorder(20, 20, 20, 20));
         JLabel label = new JLabel("⚡ Network Optimization Panel - Coming Soon");
-        label.setFont(new java.awt.Font("Arial", java.awt.Font.BOLD, 16));
+        label.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 16));
+        label.setForeground(new java.awt.Color(15, 23, 42));
         add(label);
         add(Box.createVerticalStrut(20));
-        add(new JLabel("Features: Optimization Scores, Bandwidth Recommendations"));
+        JLabel desc = new JLabel("Features: Optimization Scores, Bandwidth Recommendations");
+        desc.setForeground(new java.awt.Color(71, 85, 105));
+        add(desc);
     }
 }
 
-/**
- * AlertPanel - Alert notifications
- * Displays unacknowledged alerts with filtering
- */
-class AlertPanel extends JPanel {
-    private User currentUser;
-
-    public AlertPanel(User currentUser) {
-        this.currentUser = currentUser;
-        initializeUI();
-    }
-
-    private void initializeUI() {
-        setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
-        JLabel label = new JLabel("🔔 Alerts & Notifications Panel - Coming Soon");
-        label.setFont(new java.awt.Font("Arial", java.awt.Font.BOLD, 16));
-        add(label);
-        add(Box.createVerticalStrut(20));
-        add(new JLabel("Features: Alert Display, Acknowledge, Filter by Severity"));
-    }
-}
-
+// AlertPanel is now implemented in its own file: AlertPanel.java
 /**
  * ReportPanel - Report generation and export
  * Generate and export network reports to CSV
@@ -70,11 +54,16 @@ class ReportPanel extends JPanel {
 
     private void initializeUI() {
         setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
+        setBackground(new java.awt.Color(241, 245, 249));
+        setBorder(javax.swing.BorderFactory.createEmptyBorder(20, 20, 20, 20));
         JLabel label = new JLabel("📈 Reports & Analytics Panel - Coming Soon");
-        label.setFont(new java.awt.Font("Arial", java.awt.Font.BOLD, 16));
+        label.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 16));
+        label.setForeground(new java.awt.Color(15, 23, 42));
         add(label);
         add(Box.createVerticalStrut(20));
-        add(new JLabel("Features: Report Generation, CSV Export, Date Range Filtering"));
+        JLabel desc = new JLabel("Features: Report Generation, CSV Export, Date Range Filtering");
+        desc.setForeground(new java.awt.Color(71, 85, 105));
+        add(desc);
     }
 }
 
@@ -92,10 +81,15 @@ class UserManagementPanel extends JPanel {
 
     private void initializeUI() {
         setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
+        setBackground(new java.awt.Color(241, 245, 249));
+        setBorder(javax.swing.BorderFactory.createEmptyBorder(20, 20, 20, 20));
         JLabel label = new JLabel("👥 User Management Panel - Coming Soon");
-        label.setFont(new java.awt.Font("Arial", java.awt.Font.BOLD, 16));
+        label.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 16));
+        label.setForeground(new java.awt.Color(15, 23, 42));
         add(label);
         add(Box.createVerticalStrut(20));
-        add(new JLabel("Features: User CRUD, Role Assignment, Account Management"));
+        JLabel desc = new JLabel("Features: User CRUD, Role Assignment, Account Management");
+        desc.setForeground(new java.awt.Color(71, 85, 105));
+        add(desc);
     }
 }

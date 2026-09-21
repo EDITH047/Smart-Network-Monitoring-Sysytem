@@ -54,8 +54,7 @@ public class MainDashboard extends JFrame {
 
         // Main Tabbed Container
         tabbedPane = new JTabbedPane(JTabbedPane.TOP);
-        tabbedPane.setFont(UITheme.FONT_SUBHEADER);
-        tabbedPane.setBackground(UITheme.CARD_BG);
+        UITheme.styleTabbedPane(tabbedPane);
 
         createPanels();
         addPanelsToTabs();
@@ -200,7 +199,7 @@ public class MainDashboard extends JFrame {
                         BorderFactory.createEmptyBorder(4, 12, 4, 12)
                     ));
                 } else {
-                    alertBadgeLabel.setText("🔔 Alerts: " + count + " Action Required");
+                    alertBadgeLabel.setText("🔔 " + count + " Unresolved Alerts (Check Alerts Tab)");
                     alertBadgeLabel.setForeground(UITheme.DANGER_RED);
                     alertBadgeLabel.setBorder(BorderFactory.createCompoundBorder(
                         BorderFactory.createLineBorder(UITheme.DANGER_RED, 1, true),

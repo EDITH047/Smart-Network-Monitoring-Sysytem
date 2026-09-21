@@ -29,8 +29,9 @@ public class UITheme {
     public static final Color BORDER_DARK = new Color(203, 213, 225);     // #CBD5E1
 
     public static final Color TEXT_PRIMARY = new Color(15, 23, 42);      // #0F172A - High contrast
-    public static final Color TEXT_MUTED = new Color(100, 116, 139);     // #64748B - Subtitles
+    public static final Color TEXT_MUTED = new Color(71, 85, 105);       // #475569 - Darker subtitle for readability
     public static final Color TEXT_LIGHT = new Color(255, 255, 255);     // White text
+    public static final Color CARD_TITLE = new Color(30, 41, 59);        // #1E293B - Card section headings
 
     // Secondary / Neutral Button
     public static final Color BTN_NEUTRAL = new Color(71, 85, 105);       // #475569
@@ -126,19 +127,51 @@ public class UITheme {
     }
 
     /**
-     * Style a JTable with professional header and grid
+     * Style a JTable with professional header and grid.
+     *
+     * Windows System Look-and-Feel silently ignores JTableHeader.setBackground()
+     * and setForeground(), so we install a custom DefaultTableCellRenderer on
+     * every header column to guarantee the colors render correctly.
      */
     public static void styleTable(JTable table) {
         table.setFont(FONT_BODY);
         table.setRowHeight(28);
         table.setGridColor(BORDER_LIGHT);
-        table.setSelectionBackground(new Color(224, 231, 255)); // Soft indigo highlight
+        table.setSelectionBackground(new Color(224, 231, 255));
         table.setSelectionForeground(TEXT_PRIMARY);
+        table.setForeground(TEXT_PRIMARY);
 
-        table.getTableHeader().setFont(FONT_SUBHEADER);
-        table.getTableHeader().setBackground(PRIMARY_BLUE);
-        table.getTableHeader().setForeground(TEXT_LIGHT);
+        // Custom header renderer — the ONLY reliable way to color headers on Windows L&F
+        javax.swing.table.DefaultTableCellRenderer headerRenderer = new javax.swing.table.DefaultTableCellRenderer() {
+            @Override
+            public Component getTableCellRendererComponent(JTable tbl, Object value,
+                    boolean isSelected, boolean hasFocus, int row, int column) {
+                JLabel label = (JLabel) super.getTableCellRendererComponent(tbl, value, isSelected, hasFocus, row, column);
+                label.setBackground(new Color(30, 41, 59));   // Dark navy
+                label.setForeground(Color.WHITE);              // White text
+                label.setFont(FONT_SUBHEADER);
+                label.setHorizontalAlignment(SwingConstants.LEFT);
+                label.setBorder(BorderFactory.createCompoundBorder(
+                    BorderFactory.createMatteBorder(0, 0, 2, 1, new Color(51, 65, 85)),
+                    BorderFactory.createEmptyBorder(4, 8, 4, 8)
+                ));
+                label.setOpaque(true);
+                return label;
+            }
+        };
+
+        table.getTableHeader().setDefaultRenderer(headerRenderer);
         table.getTableHeader().setReorderingAllowed(false);
-        table.getTableHeader().setPreferredSize(new Dimension(table.getTableHeader().getPreferredSize().width, 32));
+        table.getTableHeader().setPreferredSize(
+            new Dimension(table.getTableHeader().getPreferredSize().width, 36));
+    }
+
+    /**
+     * Style a JTabbedPane with high-contrast tab labels
+     */
+    public static void styleTabbedPane(JTabbedPane tabbedPane) {
+        tabbedPane.setFont(FONT_SUBHEADER);
+        tabbedPane.setForeground(TEXT_PRIMARY);     // Tab text color — dark for readability
+        tabbedPane.setBackground(CARD_BG);
     }
 }

@@ -16,8 +16,8 @@ public class DeviceDAO {
      * Add a new device
      */
     public boolean addDevice(Device device) {
-        String sql = "INSERT INTO devices (device_name, ip_address, mac_address, device_type, location, status, added_by, created_at) " +
-                "VALUES (?, ?, ?, ?, ?, ?, ?, NOW())";
+        String sql = "INSERT INTO devices (device_name, ip_address, mac_address, device_type, location, status, added_by, network_interface, description, last_seen, created_at) " +
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())";
 
         try (Connection conn = DatabaseConfig.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -29,6 +29,9 @@ public class DeviceDAO {
             ps.setString(5, device.getLocation());
             ps.setString(6, device.getStatus());
             ps.setInt(7, device.getAddedBy());
+            ps.setString(8, device.getNetworkInterface());
+            ps.setString(9, device.getDescription());
+            ps.setTimestamp(10, device.getLastSeen());
 
             int rowsInserted = ps.executeUpdate();
             System.out.println("[DeviceDAO] Device added: " + device.getDeviceName());
@@ -160,7 +163,7 @@ public class DeviceDAO {
      * Update device information
      */
     public boolean updateDevice(Device device) {
-        String sql = "UPDATE devices SET device_name = ?, mac_address = ?, device_type = ?, location = ?, status = ? WHERE device_id = ?";
+        String sql = "UPDATE devices SET device_name = ?, mac_address = ?, device_type = ?, location = ?, status = ?, network_interface = ?, description = ?, last_seen = ? WHERE device_id = ?";
 
         try (Connection conn = DatabaseConfig.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -170,7 +173,10 @@ public class DeviceDAO {
             ps.setString(3, device.getDeviceType());
             ps.setString(4, device.getLocation());
             ps.setString(5, device.getStatus());
-            ps.setInt(6, device.getDeviceId());
+            ps.setString(6, device.getNetworkInterface());
+            ps.setString(7, device.getDescription());
+            ps.setTimestamp(8, device.getLastSeen());
+            ps.setInt(9, device.getDeviceId());
 
             int rowsUpdated = ps.executeUpdate();
             System.out.println("[DeviceDAO] Device updated: " + device.getDeviceName());
@@ -285,6 +291,9 @@ public class DeviceDAO {
         device.setLocation(rs.getString("location"));
         device.setStatus(rs.getString("status"));
         device.setAddedBy(rs.getInt("added_by"));
+        device.setNetworkInterface(rs.getString("network_interface"));
+        device.setDescription(rs.getString("description"));
+        device.setLastSeen(rs.getTimestamp("last_seen"));
         device.setCreatedAt(rs.getTimestamp("created_at"));
         return device;
     }
