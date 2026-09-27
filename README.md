@@ -16,8 +16,8 @@ The **Smart Network Monitoring System** is a robust, Java Swing-based desktop ap
 * **Blocked IP Registry:** Track and permanently ban malicious actors across the network.
 
 ### 📱 Device Registry
-* Maintains a comprehensive directory of all managed network devices (Routers, Switches, Workstations, Servers).
-* Categorize by device type, OS, IP address, and MAC address.
+* **Auto-Discovery:** Automatically detects and registers genuine physical network interfaces on the local machine on startup.
+* **Automatic Cleanup:** Safely purges stale, non-physical, or mock devices every time the application launches to ensure a clean dashboard.
 * Live status tracking (Online / Offline).
 
 ### ⚡ Network Optimization
@@ -48,7 +48,9 @@ The **Smart Network Monitoring System** is a robust, Java Swing-based desktop ap
 ## Environment Setup & Installation
 
 ### 1. Database Configuration
-The application automatically starts the embedded MySQL instance from the `mysql-data` directory on port `3306`.
+The application automatically starts the embedded MySQL instance from the `mysql-data` directory on port `3306`. 
+*Note: The application performs a clean shutdown on exit, automatically purging all temporary runtime data (devices, metrics, alerts, etc.) while preserving user credentials. Your dashboard will start fresh each time.*
+
 If the database needs to be recreated or manually launched:
 
 ```powershell

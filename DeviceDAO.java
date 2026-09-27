@@ -48,7 +48,7 @@ public class DeviceDAO {
      */
     public List<Device> getAllDevices() {
         List<Device> devices = new ArrayList<>();
-        String sql = "SELECT * FROM devices ORDER BY device_name";
+        String sql = "SELECT * FROM devices ORDER BY device_id ASC";
 
         try (Connection conn = DatabaseConfig.getConnection();
              Statement stmt = conn.createStatement();

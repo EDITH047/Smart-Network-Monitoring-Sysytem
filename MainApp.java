@@ -1,9 +1,12 @@
 package com.networkmonitor.main;
 
 import com.networkmonitor.ui.LoginFrame;
+import com.networkmonitor.config.DatabaseConfig;
 import javax.swing.*;
 import java.io.File;
 import java.net.Socket;
+import java.sql.Connection;
+import java.sql.Statement;
 
 /**
  * MainApp - Application entry point
@@ -11,12 +14,69 @@ import java.net.Socket;
  */
 public class MainApp {
 
+    // Reference to the embedded MySQL process (if we started one)
+    private static Process mysqlProcess = null;
+
     public static void main(String[] args) {
         // Set system properties
         System.setProperty("java.awt.headless", "false");
         
         // Auto-start MySQL if it is not currently running
         startMySQLIfNecessary();
+
+        // Auto-discover network devices for this system
+        try {
+            new com.networkmonitor.service.NetworkDiscoveryService().discoverAndRegister();
+        } catch (Exception e) {
+            System.err.println("[MainApp] Network discovery failed: " + e.getMessage());
+        }
+
+        // Register a SINGLE shutdown hook that:
+        //   1. Cleans all runtime data from the database
+        //   2. Closes the DB connection
+        //   3. Shuts down the embedded MySQL server (if we started one)
+        // Using one hook guarantees the correct order of operations.
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            // Step 1: Clean runtime data from the database
+            System.out.println("[MainApp] Cleaning runtime data from database...");
+            try {
+                Connection conn = DatabaseConfig.getConnection();
+                Statement st = conn.createStatement();
+                // Disable FK checks to allow deleting in any order
+                st.execute("SET FOREIGN_KEY_CHECKS = 0");
+                st.executeUpdate("TRUNCATE TABLE network_metrics");
+                st.executeUpdate("TRUNCATE TABLE alerts");
+                st.executeUpdate("TRUNCATE TABLE security_events");
+                st.executeUpdate("TRUNCATE TABLE optimization_results");
+                st.executeUpdate("TRUNCATE TABLE blocked_ips");
+                st.executeUpdate("TRUNCATE TABLE firewall_rules");
+                st.executeUpdate("TRUNCATE TABLE audit_log");
+                st.executeUpdate("TRUNCATE TABLE devices");
+                st.execute("SET FOREIGN_KEY_CHECKS = 1");
+                st.close();
+                System.out.println("[MainApp] Database cleaned successfully.");
+            } catch (Exception e) {
+                System.err.println("[MainApp] Error cleaning database: " + e.getMessage());
+            }
+
+            // Step 2: Close the DB connection
+            DatabaseConfig.closeConnection();
+
+            // Step 3: Shut down embedded MySQL server
+            if (mysqlProcess != null && mysqlProcess.isAlive()) {
+                System.out.println("[MainApp] Shutting down embedded MySQL server...");
+                mysqlProcess.destroy();
+                try {
+                    Thread.sleep(3000);
+                    if (mysqlProcess.isAlive()) {
+                        mysqlProcess.destroyForcibly();
+                    }
+                } catch (InterruptedException ex) {
+                    mysqlProcess.destroyForcibly();
+                }
+                System.out.println("[MainApp] MySQL server stopped.");
+            }
+        }, "ShutdownHook"));
 
         // Launch on EDT (Event Dispatch Thread)
         SwingUtilities.invokeLater(() -> {
@@ -32,12 +92,12 @@ public class MainApp {
                 System.out.println("");
 
                 // Display demo credentials
-                System.out.println("📋 Default Credentials:");
+                System.out.println("\uD83D\uDCCB Default Credentials:");
                 System.out.println("   Username: admin");
                 System.out.println("   Password: admin123");
                 System.out.println("");
 
-                System.out.println("🚀 Launching Login Frame...");
+                System.out.println("\uD83D\uDE80 Launching Login Frame...");
                 System.out.println("");
 
                 // Create and show login frame
@@ -100,36 +160,19 @@ public class MainApp {
             System.out.println("[MainApp] Starting MySQL server from: " + mysqldPath);
             System.out.println("[MainApp] Using data directory: " + dataDir);
             
-            ProcessBuilder pb = new ProcessBuilder(mysqldPath, "--datadir=" + dataDir, "--port=3306", "--console");
+            ProcessBuilder pb = new ProcessBuilder(mysqldPath, "--datadir=" + dataDir, "--port=3306", "--console", "--skip-log-bin");
             
             // Redirect output to a log file so it doesn't clutter the console indefinitely
             File logFile = new File("mysql_startup.log");
             pb.redirectErrorStream(true);
             pb.redirectOutput(logFile);
             
-            // Start the process
-            Process mysqlProcess = pb.start();
+            // Start the process and store the reference for the shutdown hook
+            mysqlProcess = pb.start();
             
             // Wait a few seconds for it to start up
             System.out.println("[MainApp] Waiting 3 seconds for MySQL to initialize...");
             Thread.sleep(3000);
-            
-            // Add shutdown hook to stop MySQL when the app exits
-            Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-                System.out.println("[MainApp] Shutting down embedded MySQL server...");
-                if (mysqlProcess != null && mysqlProcess.isAlive()) {
-                    mysqlProcess.destroy();
-                    try {
-                        // Give it 3 seconds to shutdown gracefully, then forcefully kill
-                        Thread.sleep(3000);
-                        if (mysqlProcess.isAlive()) {
-                            mysqlProcess.destroyForcibly();
-                        }
-                    } catch (InterruptedException ex) {
-                        mysqlProcess.destroyForcibly();
-                    }
-                }
-            }));
             
             System.out.println("[MainApp] MySQL auto-start procedure completed.");
             

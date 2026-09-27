@@ -148,9 +148,6 @@ VALUES ('admin', '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720
         'System Administrator', 'admin@network.local', 'ADMIN');
 
 -- ==========================================================
--- Sample devices for testing
+-- Devices are auto-discovered at runtime by NetworkDiscoveryService.
+-- No sample/hardcoded device inserts needed.
 -- ==========================================================
-('Home Gateway Router', '192.168.0.1', '08:8A:F1:6C:03:A0', 'ROUTER', 'Wired Network', 'ONLINE', 1),
-('Edith - Local PC', '192.168.0.118', '7C:57:58:6D:C9:AF', 'PC', 'Wired Network', 'ONLINE', 1),
-('Mobile Device 1', '192.168.0.161', 'B6:97:13:10:FE:89', 'MOBILE', 'Wi-Fi Network', 'ONLINE', 1),
-('Mobile Device 2', '192.168.0.219', 'C6:DB:36:D5:4A:A3', 'MOBILE', 'Wi-Fi Network', 'ONLINE', 1);

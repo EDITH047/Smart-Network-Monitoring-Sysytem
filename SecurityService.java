@@ -12,7 +12,7 @@ import java.util.List;
  */
 public class SecurityService {
 
-    private static SecurityService instance;
+    private static final SecurityService instance = new SecurityService();
     private SecurityEventDAO eventDAO = new SecurityEventDAO();
     private BlockedIPDAO blockedIPDAO = new BlockedIPDAO();
 
@@ -25,9 +25,6 @@ public class SecurityService {
     }
 
     public static SecurityService getInstance() {
-        if (instance == null) {
-            instance = new SecurityService();
-        }
         return instance;
     }
 

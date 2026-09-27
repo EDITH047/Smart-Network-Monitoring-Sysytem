@@ -27,9 +27,14 @@ public class MonitoringPanel extends JPanel {
     private User currentUser;
     private MonitoringService monitoringService;
     private DeviceDAO deviceDAO;
-    private Timer refreshTimer; // javax.swing.Timer — fires on EDT
+    private final java.util.concurrent.ScheduledExecutorService collectionExecutor =
+        java.util.concurrent.Executors.newSingleThreadScheduledExecutor(
+            r -> { Thread t = new Thread(r, "MetricCollector"); t.setDaemon(true); return t; });
+    private final java.util.concurrent.ScheduledExecutorService persistenceExecutor =
+        java.util.concurrent.Executors.newSingleThreadScheduledExecutor(
+            r -> { Thread t = new Thread(r, "MetricPersister"); t.setDaemon(true); return t; });
+    private Timer uiTimer;
     private boolean isRunning;
-    private boolean isRefreshing = false;
 
     // UI Components
     private JLabel systemHealthLabel;
@@ -118,7 +123,7 @@ public class MonitoringPanel extends JPanel {
                 dataSourceLabel.setText("🎭 SIMULATED");
                 dataSourceLabel.setForeground(UITheme.WARNING_ORANGE);
             }
-            triggerBackgroundRefresh(); // Refresh immediately on background thread
+            forceRefresh(); // Refresh immediately on background thread
         });
         leftPanel.add(realDataToggle);
 
@@ -290,7 +295,7 @@ public class MonitoringPanel extends JPanel {
                 }
                 @Override
                 protected void done() {
-                    triggerBackgroundRefresh();
+                    refreshUI();
                     collectButton.setEnabled(true);
                     collectButton.setText("▶ Collect Now");
                 }
@@ -300,7 +305,7 @@ public class MonitoringPanel extends JPanel {
 
         JButton refreshButton = new JButton("🔄 Refresh View");
         UITheme.stylePrimaryButton(refreshButton);
-        refreshButton.addActionListener(e -> triggerBackgroundRefresh());
+        refreshButton.addActionListener(e -> forceRefresh());
         rightButtons.add(refreshButton);
 
         bottomPanel.add(rightButtons, BorderLayout.EAST);
@@ -308,130 +313,84 @@ public class MonitoringPanel extends JPanel {
         return bottomPanel;
     }
 
-    /**
-     * Auto-refresh timer — uses javax.swing.Timer which fires on EDT.
-     * The handler kicks off a SwingWorker so the EDT is never blocked.
-     */
-    private void setupAutoRefresh() {
-        refreshTimer = new Timer(500, e -> {
-            if (isRunning) {
-                triggerBackgroundRefresh();
-            }
+    private void forceRefresh() {
+        collectionExecutor.submit(() -> {
+            try {
+                monitoringService.collectMetrics();
+                SwingUtilities.invokeLater(this::refreshUI);
+            } catch (Exception e) {}
         });
-        refreshTimer.setInitialDelay(500); // small delay before first tick
-        refreshTimer.start();
     }
 
-    /**
-     * Container class for all dashboard data loaded off-EDT
-     */
-    private static class DashboardData {
-        double systemHealth;
-        int onlineDevices;
-        int totalDevices;
-        double avgBandwidth;
-        String networkSummary;
-        boolean isRealData;
-        Object[][] tableRows; // rows for the table model
-    }
-
-    /**
-     * Kick off a SwingWorker to load all dashboard data in the background.
-     * When done, the EDT updates the UI with the results.
-     */
-    private void triggerBackgroundRefresh() {
-        if (isRefreshing) return;
-        isRefreshing = true;
-        
-        new SwingWorker<DashboardData, Void>() {
-            @Override
-            protected DashboardData doInBackground() {
-                DashboardData data = new DashboardData();
-                try {
-                    // Collect metrics in the background so the live feed has data
-                    monitoringService.collectMetrics();
-
-                    data.systemHealth = monitoringService.getSystemHealth();
-                    data.onlineDevices = deviceDAO.getOnlineDeviceCount();
-                    data.totalDevices = deviceDAO.getDeviceCount();
-                    data.avgBandwidth = monitoringService.getAverageBandwidth();
-                    data.isRealData = monitoringService.isUsingRealData();
-
-                    try {
-                        data.networkSummary = monitoringService.getNetworkSummary();
-                    } catch (Exception e) {
-                        data.networkSummary = "Network summary unavailable";
-                    }
-
-                    // Use the metrics just collected (already in live cache)
-                    List<NetworkMetric> metrics = monitoringService.getLatestMetrics();
-                    data.tableRows = new Object[metrics.size()][];
-                    for (int i = 0; i < metrics.size(); i++) {
-                        NetworkMetric metric = metrics.get(i);
-                        Device device = deviceDAO.getDeviceById(metric.getDeviceId());
-                        if (device != null) {
-                            data.tableRows[i] = new Object[]{
-                                device.getDeviceName(),
-                                device.getIpAddress(),
-                                device.getStatus(),
-                                String.format("%.2f Mbps", metric.getBandwidthUsage()),
-                                String.format("%.1f ms", metric.getLatencyMs()),
-                                String.format("%.2f%%", metric.getPacketLossPct()),
-                                formatTime()
-                            };
-                        }
-                    }
-
-                } catch (Exception e) {
-                    System.err.println("[MonitoringPanel] Background refresh error: " + e.getMessage());
-                }
-                return data;
+    private void setupAutoRefresh() {
+        // 1. Background collection loop — runs every 500ms OFF the EDT
+        collectionExecutor.scheduleAtFixedRate(() -> {
+            try {
+                monitoringService.collectMetrics();
+            } catch (Exception e) {
+                System.err.println("[MonitoringPanel] Collection error: " + e.getMessage());
             }
+        }, 0, 500, java.util.concurrent.TimeUnit.MILLISECONDS);
 
-            @Override
-            protected void done() {
-                try {
-                    DashboardData data = get();
-                    applyDataToUI(data);
-                } catch (Exception e) {
-                    System.err.println("[MonitoringPanel] UI update error: " + e.getMessage());
-                } finally {
-                    isRefreshing = false;
-                }
+        // 2. DB persistence loop — runs every 30 seconds OFF the EDT
+        persistenceExecutor.scheduleAtFixedRate(() -> {
+            try {
+                monitoringService.persistMetrics();
+            } catch (Exception e) {
+                System.err.println("[MonitoringPanel] Persistence error: " + e.getMessage());
             }
-        }.execute();
+        }, 30, 30, java.util.concurrent.TimeUnit.SECONDS);
+
+        // 3. UI repaint loop — runs every 500ms ON the EDT, reads RAM only
+        uiTimer = new Timer(500, e -> {
+            if (isRunning) refreshUI(); // zero-cost RAM read
+        });
+        uiTimer.start();
     }
 
-    /**
-     * Apply pre-fetched data to the UI components. Runs on the EDT.
-     */
-    private void applyDataToUI(DashboardData data) {
-        // Summary cards
-        systemHealthLabel.setText(String.format("%.1f%%", data.systemHealth));
-        systemHealthLabel.setForeground(data.systemHealth >= 80 ? UITheme.SUCCESS_GREEN : UITheme.DANGER_RED);
+    private void refreshUI() {
+        com.networkmonitor.service.DeviceCache cache = com.networkmonitor.service.DeviceCache.getInstance();
+        List<NetworkMetric> metrics = monitoringService.getLatestMetrics(); // from liveMetricCache (RAM)
 
-        onlineDevicesLabel.setText(data.onlineDevices + " / " + data.totalDevices);
-        onlineDevicesLabel.setForeground(
-            data.onlineDevices == data.totalDevices ? UITheme.SUCCESS_GREEN : UITheme.WARNING_ORANGE);
+        // Update summary cards from cache
+        double health = monitoringService.getSystemHealth();
+        systemHealthLabel.setText(String.format("%.1f%%", health));
+        systemHealthLabel.setForeground(health >= 80 ? UITheme.SUCCESS_GREEN : UITheme.DANGER_RED);
 
-        avgBandwidthLabel.setText(String.format("%.2f Mbps", data.avgBandwidth));
+        int online = cache.getOnlineDeviceCount();
+        int total = cache.getDeviceCount();
+        onlineDevicesLabel.setText(online + " / " + total);
+        onlineDevicesLabel.setForeground(online == total ? UITheme.SUCCESS_GREEN : UITheme.WARNING_ORANGE);
+
+        double avgBw = monitoringService.getAverageBandwidth();
+        avgBandwidthLabel.setText(String.format("%.2f Mbps", avgBw));
 
         // Network summary
-        networkSummaryLabel.setText(data.networkSummary != null ? data.networkSummary : "—");
+        try {
+            networkSummaryLabel.setText(monitoringService.getNetworkSummary());
+        } catch (Exception e) {
+            networkSummaryLabel.setText("Network summary unavailable");
+        }
 
-        // Table
+        // Update table from cache — zero DB queries
         tableModel.setRowCount(0);
-        if (data.tableRows != null) {
-            for (Object[] row : data.tableRows) {
-                if (row != null) {
-                    tableModel.addRow(row);
-                }
+        for (NetworkMetric metric : metrics) {
+            Device device = cache.getDeviceById(metric.getDeviceId()); // RAM lookup
+            if (device != null) {
+                tableModel.addRow(new Object[]{
+                    device.getDeviceName(),
+                    device.getIpAddress(),
+                    device.getStatus(),
+                    String.format("%.2f Mbps", metric.getBandwidthUsage()),
+                    String.format("%.1f ms", metric.getLatencyMs()),
+                    String.format("%.2f%%", metric.getPacketLossPct()),
+                    formatTime()
+                });
             }
         }
 
-        // Status bar
-        String modeTag = data.isRealData ? "[REAL]" : "[SIM]";
-        lastUpdateLabel.setText(modeTag + " Last refreshed: " + formatTime() + " | Stream: Active (rapid)");
+        String modeTag = monitoringService.isUsingRealData() ? "[REAL]" : "[SIM]";
+        lastUpdateLabel.setText(modeTag + " Last refreshed: " + formatTime() + " | Stream: Active (500ms)");
     }
 
     private String formatTime() {
@@ -558,8 +517,8 @@ public class MonitoringPanel extends JPanel {
      */
     public void cleanup() {
         isRunning = false;
-        if (refreshTimer != null) {
-            refreshTimer.stop();
-        }
+        if (uiTimer != null) uiTimer.stop();
+        collectionExecutor.shutdownNow();
+        persistenceExecutor.shutdownNow();
     }
 }

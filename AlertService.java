@@ -11,7 +11,7 @@ import java.util.List;
  */
 public class AlertService {
 
-    private static AlertService instance;
+    private static final AlertService instance = new AlertService();
     private AlertDAO alertDAO = new AlertDAO();
 
     // Configurable thresholds
@@ -23,9 +23,6 @@ public class AlertService {
     }
 
     public static AlertService getInstance() {
-        if (instance == null) {
-            instance = new AlertService();
-        }
         return instance;
     }
 

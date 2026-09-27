@@ -184,6 +184,7 @@ public class DevicePanel extends JPanel {
             newDevice.setAddedBy(currentUser.getUserId());
             if (deviceDAO.addDevice(newDevice)) {
                 loadDevices();
+                com.networkmonitor.service.DeviceCache.getInstance().invalidate();
                 JOptionPane.showMessageDialog(this, "Device added successfully!", "Success", JOptionPane.INFORMATION_MESSAGE);
             } else {
                 showError("Failed to save device to database");
@@ -213,6 +214,7 @@ public class DevicePanel extends JPanel {
             Device updatedDevice = dialog.getDevice();
             if (deviceDAO.updateDevice(updatedDevice)) {
                 loadDevices();
+                com.networkmonitor.service.DeviceCache.getInstance().invalidate();
                 JOptionPane.showMessageDialog(this, "Device updated successfully!", "Success", JOptionPane.INFORMATION_MESSAGE);
             } else {
                 showError("Failed to update device");
@@ -241,6 +243,7 @@ public class DevicePanel extends JPanel {
         if (confirm == JOptionPane.YES_OPTION) {
             if (deviceDAO.deleteDevice(deviceId)) {
                 loadDevices();
+                com.networkmonitor.service.DeviceCache.getInstance().invalidate();
                 JOptionPane.showMessageDialog(this, "Device deleted successfully.", "Success", JOptionPane.INFORMATION_MESSAGE);
             } else {
                 showError("Failed to delete device.");
