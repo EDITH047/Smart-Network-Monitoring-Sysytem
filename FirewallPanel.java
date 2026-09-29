@@ -108,6 +108,7 @@ public class FirewallPanel extends JPanel {
         });
 
         rulesTable = new JTable(tableModel);
+        rulesTable.setAutoCreateRowSorter(true);
         UITheme.styleTable(rulesTable);
 
         // Column widths

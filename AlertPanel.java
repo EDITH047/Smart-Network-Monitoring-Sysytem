@@ -86,6 +86,7 @@ public class AlertPanel extends JPanel {
         };
 
         alertTable = new JTable(tableModel);
+        alertTable.setAutoCreateRowSorter(true);
         UITheme.styleTable(alertTable);
         alertTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         
@@ -165,7 +166,7 @@ public class AlertPanel extends JPanel {
         int newRowToSelect = -1;
 
         for (Alert alert : alerts) {
-            Device device = deviceDAO.getDeviceById(alert.getDeviceId());
+            Device device = com.networkmonitor.service.DeviceCache.getInstance().getDeviceById(alert.getDeviceId());
             String deviceStr = (device != null) ? device.getDeviceName() + " (" + device.getIpAddress() + ")" : "Unknown (ID: " + alert.getDeviceId() + ")";
             String statusStr = alert.isAcknowledged() ? "Acknowledged" : "Active";
 

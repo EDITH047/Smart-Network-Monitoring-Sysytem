@@ -11,16 +11,13 @@ import java.util.List;
  */
 public class FirewallService {
 
-    private static FirewallService instance;
+    private static final FirewallService instance = new FirewallService();
     private FirewallRuleDAO ruleDAO = new FirewallRuleDAO();
 
     private FirewallService() {
     }
 
     public static FirewallService getInstance() {
-        if (instance == null) {
-            instance = new FirewallService();
-        }
         return instance;
     }
 

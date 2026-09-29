@@ -112,6 +112,7 @@ public class SecurityPanel extends JPanel {
         });
 
         eventsTable = new JTable(eventsTableModel);
+        eventsTable.setAutoCreateRowSorter(true);
         UITheme.styleTable(eventsTable);
         eventsTable.getColumnModel().getColumn(EVENT_COL_SEVERITY).setCellRenderer(new SeverityCellRenderer());
 
@@ -164,6 +165,7 @@ public class SecurityPanel extends JPanel {
         });
 
         blockedIpTable = new JTable(blockedIpTableModel);
+        blockedIpTable.setAutoCreateRowSorter(true);
         UITheme.styleTable(blockedIpTable);
 
         JScrollPane scrollPane = new JScrollPane(blockedIpTable);
@@ -180,7 +182,7 @@ public class SecurityPanel extends JPanel {
             eventsTableModel.setRowCount(0);
             List<SecurityEvent> events = securityService.getUnresolvedEvents();
             for (SecurityEvent ev : events) {
-                Device dev = deviceDAO.getDeviceById(ev.getDeviceId());
+                Device dev = com.networkmonitor.service.DeviceCache.getInstance().getDeviceById(ev.getDeviceId());
                 String devName = dev != null ? dev.getDeviceName() + " (" + dev.getIpAddress() + ")" : "Unknown";
                 eventsTableModel.addRow(new Object[]{
                     ev.getEventId(), devName, ev.getEventType(), ev.getSeverity(),

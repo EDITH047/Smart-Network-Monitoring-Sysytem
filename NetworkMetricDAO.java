@@ -114,6 +114,25 @@ public class NetworkMetricDAO {
     }
 
     /**
+     * Get recent metrics globally up to limit
+     */
+    public List<NetworkMetric> getRecentMetrics(int limit) {
+        List<NetworkMetric> metrics = new ArrayList<>();
+        String sql = "SELECT * FROM network_metrics ORDER BY recorded_at DESC LIMIT ?";
+        try (Connection conn = DatabaseConfig.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, limit);
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) {
+                metrics.add(mapResultSetToMetric(rs));
+            }
+        } catch (SQLException e) {
+            System.err.println("[NetworkMetricDAO] Error getting recent metrics: " + e.getMessage());
+        }
+        return metrics;
+    }
+
+    /**
      * Get average metrics for a device over last N hours
      */
     public NetworkMetric getAverageMetrics(int deviceId, int hours) {

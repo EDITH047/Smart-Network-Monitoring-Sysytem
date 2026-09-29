@@ -12,7 +12,7 @@ import com.networkmonitor.util.PasswordUtil;
  */
 public class AuthService {
 
-    private static AuthService instance;
+    private static final AuthService instance = new AuthService();
     private UserDAO userDAO = new UserDAO();
     private AuditLogDAO auditLogDAO = new AuditLogDAO();
     private User currentUser;
@@ -25,9 +25,6 @@ public class AuthService {
      * Get singleton instance
      */
     public static AuthService getInstance() {
-        if (instance == null) {
-            instance = new AuthService();
-        }
         return instance;
     }
 

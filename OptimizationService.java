@@ -13,7 +13,7 @@ import java.util.List;
  */
 public class OptimizationService {
 
-    private static OptimizationService instance;
+    private static final OptimizationService instance = new OptimizationService();
     private OptimizationDAO optimizationDAO = new OptimizationDAO();
     private NetworkMetricDAO metricDAO = new NetworkMetricDAO();
 
@@ -21,9 +21,6 @@ public class OptimizationService {
     }
 
     public static OptimizationService getInstance() {
-        if (instance == null) {
-            instance = new OptimizationService();
-        }
         return instance;
     }
 
@@ -34,8 +31,7 @@ public class OptimizationService {
         System.out.println("[OptimizationService] Starting network analysis...");
 
         MonitoringService monitoringService = MonitoringService.getInstance();
-        List<com.networkmonitor.model.Device> devices =
-            new com.networkmonitor.dao.DeviceDAO().getAllDevices();
+        List<com.networkmonitor.model.Device> devices = DeviceCache.getInstance().getAllDevices();
 
         for (com.networkmonitor.model.Device device : devices) {
             try {

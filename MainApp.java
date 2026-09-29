@@ -21,6 +21,12 @@ public class MainApp {
         // Set system properties
         System.setProperty("java.awt.headless", "false");
         
+        try {
+            UIManager.setLookAndFeel(new com.formdev.flatlaf.FlatLightLaf());
+        } catch (Exception ex) {
+            System.err.println("Failed to initialize FlatLaf");
+        }
+        
         // Auto-start MySQL if it is not currently running
         startMySQLIfNecessary();
 

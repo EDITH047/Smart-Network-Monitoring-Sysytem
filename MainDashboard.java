@@ -31,6 +31,9 @@ public class MainDashboard extends JFrame {
     private AlertPanel alertPanel;
     private ReportPanel reportPanel;
     private UserManagementPanel userManagementPanel;
+    private NetworkTopologyPanel topologyPanel;
+    private SettingsPanel settingsPanel;
+    private AuditLogPanel auditLogPanel;
 
     public MainDashboard(User user) {
         this.currentUser = user;
@@ -151,10 +154,14 @@ public class MainDashboard extends JFrame {
         alertPanel = new AlertPanel(currentUser);
         reportPanel = new ReportPanel(currentUser);
         userManagementPanel = new UserManagementPanel(currentUser);
+        topologyPanel = new NetworkTopologyPanel(currentUser);
+        settingsPanel = new SettingsPanel(currentUser);
+        auditLogPanel = new AuditLogPanel(currentUser);
     }
 
     private void addPanelsToTabs() {
         tabbedPane.addTab("📊 Monitoring", monitoringPanel);
+        tabbedPane.addTab("🗺️ Topology", topologyPanel);
         tabbedPane.addTab("🔔 Alerts", alertPanel);
         tabbedPane.addTab("📈 Reports", reportPanel);
 
@@ -167,7 +174,10 @@ public class MainDashboard extends JFrame {
 
         if (isRoleAllowed("ADMIN")) {
             tabbedPane.addTab("👥 Users", userManagementPanel);
+            tabbedPane.addTab("📋 Audit Log", auditLogPanel);
         }
+        
+        tabbedPane.addTab("⚙️ Settings", settingsPanel);
     }
 
     private boolean isRoleAllowed(String requiredRole) {

@@ -13,25 +13,52 @@ import java.awt.event.MouseEvent;
 public class UITheme {
 
     // Primary Brand Colors
-    public static final Color PRIMARY_BLUE = new Color(37, 99, 235);     // #2563EB - Primary Action
-    public static final Color PRIMARY_HOVER = new Color(29, 78, 216);    // #1D4ED8
-    public static final Color SUCCESS_GREEN = new Color(22, 163, 74);    // #16A34A - Positive / Online
-    public static final Color SUCCESS_HOVER = new Color(21, 128, 61);    // #15803D
-    public static final Color DANGER_RED = new Color(220, 38, 38);       // #DC2626 - Delete / Offline
-    public static final Color DANGER_HOVER = new Color(185, 28, 28);      // #B91C1C
-    public static final Color WARNING_ORANGE = new Color(217, 119, 6);   // #D97706 - Warning / Latency
+    public static final Color PRIMARY_BLUE = new DynamicColor("Component.accentColor", 37, 99, 235);
+    public static final Color PRIMARY_HOVER = new DynamicColor("Button.default.hoverBackground", 29, 78, 216);
+    public static final Color SUCCESS_GREEN = new Color(22, 163, 74);
+    public static final Color SUCCESS_HOVER = new Color(21, 128, 61);
+    public static final Color DANGER_RED = new Color(220, 38, 38);
+    public static final Color DANGER_HOVER = new Color(185, 28, 28);
+    public static final Color WARNING_ORANGE = new Color(217, 119, 6);
 
     // Neutral Surfaces & Texts
-    public static final Color BG_DARK_HEADER = new Color(15, 23, 42);    // #0F172A - Header bar
-    public static final Color BG_CANVAS = new Color(241, 245, 249);      // #F1F5F9 - Page canvas
-    public static final Color CARD_BG = new Color(255, 255, 255);         // White
-    public static final Color BORDER_LIGHT = new Color(226, 232, 240);    // #E2E8F0
-    public static final Color BORDER_DARK = new Color(203, 213, 225);     // #CBD5E1
+    public static final Color BG_DARK_HEADER = new DynamicColor("TitlePane.background", 15, 23, 42);
+    public static final Color BG_CANVAS = new DynamicColor("Panel.background", 241, 245, 249);
+    public static final Color CARD_BG = new DynamicColor("Panel.background", 255, 255, 255);
+    public static final Color BORDER_LIGHT = new DynamicColor("Component.borderColor", 226, 232, 240);
+    public static final Color BORDER_DARK = new DynamicColor("Component.focusedBorderColor", 203, 213, 225);
 
-    public static final Color TEXT_PRIMARY = new Color(15, 23, 42);      // #0F172A - High contrast
-    public static final Color TEXT_MUTED = new Color(71, 85, 105);       // #475569 - Darker subtitle for readability
-    public static final Color TEXT_LIGHT = new Color(255, 255, 255);     // White text
-    public static final Color CARD_TITLE = new Color(30, 41, 59);        // #1E293B - Card section headings
+    public static final Color TEXT_PRIMARY = new DynamicColor("Label.foreground", 15, 23, 42);
+    public static final Color TEXT_MUTED = new DynamicColor("Label.disabledForeground", 71, 85, 105);
+    public static final Color TEXT_LIGHT = new Color(255, 255, 255);
+    public static final Color CARD_TITLE = new DynamicColor("Label.foreground", 30, 41, 59);
+
+    public static class DynamicColor extends Color {
+        private final String key;
+        private final Color fallback;
+        
+        public DynamicColor(String key, int r, int g, int b) {
+            super(r, g, b);
+            this.fallback = new Color(r, g, b);
+            this.key = key;
+        }
+        
+        private Color getCurrent() {
+            Color c = UIManager.getColor(key);
+            return c != null ? c : fallback;
+        }
+        
+        @Override public int getRed() { return getCurrent().getRed(); }
+        @Override public int getGreen() { return getCurrent().getGreen(); }
+        @Override public int getBlue() { return getCurrent().getBlue(); }
+        @Override public int getAlpha() { return getCurrent().getAlpha(); }
+        @Override public int getRGB() { return getCurrent().getRGB(); }
+        
+        @Override
+        public java.awt.PaintContext createContext(java.awt.image.ColorModel cm, java.awt.Rectangle r, java.awt.geom.Rectangle2D r2d, java.awt.geom.AffineTransform xform, java.awt.RenderingHints hints) {
+            return getCurrent().createContext(cm, r, r2d, xform, hints);
+        }
+    }
 
     // Secondary / Neutral Button
     public static final Color BTN_NEUTRAL = new Color(71, 85, 105);       // #475569

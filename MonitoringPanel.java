@@ -13,6 +13,13 @@ import javax.swing.table.TableCellRenderer;
 import java.awt.*;
 import java.util.List;
 
+import org.jfree.chart.ChartFactory;
+import org.jfree.chart.ChartPanel;
+import org.jfree.chart.JFreeChart;
+import org.jfree.data.time.Millisecond;
+import org.jfree.data.time.TimeSeries;
+import org.jfree.data.time.TimeSeriesCollection;
+
 /**
  * MonitoringPanel - Real-time Network Monitoring Dashboard with High-Contrast UI Theme
  *
@@ -47,11 +54,19 @@ public class MonitoringPanel extends JPanel {
     private JToggleButton realDataToggle;
     private JLabel dataSourceLabel;
 
+    // Charts
+    private TimeSeries totalBandwidthSeries;
+    private TimeSeries avgLatencySeries;
+
     public MonitoringPanel(User currentUser) {
         this.currentUser = currentUser;
         this.monitoringService = MonitoringService.getInstance();
         this.deviceDAO = new DeviceDAO();
         this.isRunning = true;
+        this.totalBandwidthSeries = new TimeSeries("Total Bandwidth (Mbps)");
+        this.totalBandwidthSeries.setMaximumItemAge(60000);
+        this.avgLatencySeries = new TimeSeries("Average Latency (ms)");
+        this.avgLatencySeries.setMaximumItemAge(60000);
         initializeUI();
         setupAutoRefresh();
     }
@@ -75,9 +90,15 @@ public class MonitoringPanel extends JPanel {
 
         add(topPanel, BorderLayout.NORTH);
 
-        // Center - Metrics Table
-        JPanel centerPanel = createMetricsTable();
-        add(centerPanel, BorderLayout.CENTER);
+        // Center - Metrics Table & Charts
+        JPanel tablePanel = createMetricsTable();
+        JPanel chartsPanel = createChartsPanel();
+        
+        JSplitPane splitPane = new JSplitPane(JSplitPane.VERTICAL_SPLIT, tablePanel, chartsPanel);
+        splitPane.setResizeWeight(0.5);
+        splitPane.setBorder(null);
+        splitPane.setOpaque(false);
+        add(splitPane, BorderLayout.CENTER);
 
         // Bottom - Status & Refresh Control
         JPanel bottomPanel = createBottomPanel();
@@ -247,6 +268,7 @@ public class MonitoringPanel extends JPanel {
         });
 
         metricsTable = new JTable(tableModel);
+        metricsTable.setAutoCreateRowSorter(true);
         UITheme.styleTable(metricsTable);
 
         metricsTable.getColumnModel().getColumn(0).setPreferredWidth(140);
@@ -267,6 +289,57 @@ public class MonitoringPanel extends JPanel {
         tablePanel.add(scrollPane, BorderLayout.CENTER);
 
         return tablePanel;
+    }
+
+    private JPanel createChartsPanel() {
+        JPanel chartsContainer = new JPanel(new GridLayout(1, 2, 14, 0));
+        chartsContainer.setOpaque(false);
+        chartsContainer.setBorder(BorderFactory.createEmptyBorder(14, 0, 0, 0));
+
+        TimeSeriesCollection bwDataset = new TimeSeriesCollection(totalBandwidthSeries);
+        JFreeChart bwChart = ChartFactory.createTimeSeriesChart(
+            "Total Bandwidth", "Time", "Mbps", bwDataset, false, true, false);
+        styleChart(bwChart);
+        
+        ChartPanel bwChartPanel = new ChartPanel(bwChart);
+        bwChartPanel.setOpaque(false);
+        UITheme.styleCard(bwChartPanel);
+        chartsContainer.add(bwChartPanel);
+
+        TimeSeriesCollection latDataset = new TimeSeriesCollection(avgLatencySeries);
+        JFreeChart latChart = ChartFactory.createTimeSeriesChart(
+            "Average Latency", "Time", "ms", latDataset, false, true, false);
+        styleChart(latChart);
+        
+        ChartPanel latChartPanel = new ChartPanel(latChart);
+        latChartPanel.setOpaque(false);
+        UITheme.styleCard(latChartPanel);
+        chartsContainer.add(latChartPanel);
+
+        return chartsContainer;
+    }
+
+    private void styleChart(JFreeChart chart) {
+        chart.setBackgroundPaint(new Color(0, 0, 0, 0));
+        chart.getTitle().setFont(UITheme.FONT_SUBHEADER);
+        chart.getTitle().setPaint(UITheme.CARD_TITLE);
+        
+        org.jfree.chart.plot.XYPlot plot = chart.getXYPlot();
+        plot.setBackgroundPaint(new Color(0, 0, 0, 0));
+        plot.setDomainGridlinePaint(UITheme.BORDER_LIGHT);
+        plot.setRangeGridlinePaint(UITheme.BORDER_LIGHT);
+        plot.setOutlinePaint(null);
+        
+        plot.getDomainAxis().setTickLabelFont(UITheme.FONT_SMALL);
+        plot.getDomainAxis().setTickLabelPaint(UITheme.TEXT_MUTED);
+        plot.getRangeAxis().setTickLabelFont(UITheme.FONT_SMALL);
+        plot.getRangeAxis().setTickLabelPaint(UITheme.TEXT_MUTED);
+        
+        org.jfree.chart.renderer.xy.XYLineAndShapeRenderer renderer = 
+            new org.jfree.chart.renderer.xy.XYLineAndShapeRenderer(true, false);
+        renderer.setSeriesPaint(0, UITheme.PRIMARY_BLUE);
+        renderer.setSeriesStroke(0, new BasicStroke(2.0f));
+        plot.setRenderer(renderer);
     }
 
     private JPanel createBottomPanel() {
@@ -374,9 +447,17 @@ public class MonitoringPanel extends JPanel {
 
         // Update table from cache — zero DB queries
         tableModel.setRowCount(0);
+        double totalBw = 0;
+        double totalLat = 0;
+        int activeCount = 0;
+
         for (NetworkMetric metric : metrics) {
             Device device = cache.getDeviceById(metric.getDeviceId()); // RAM lookup
             if (device != null) {
+                totalBw += metric.getBandwidthUsage();
+                totalLat += metric.getLatencyMs();
+                if (metric.getLatencyMs() > 0) activeCount++;
+
                 tableModel.addRow(new Object[]{
                     device.getDeviceName(),
                     device.getIpAddress(),
@@ -388,6 +469,11 @@ public class MonitoringPanel extends JPanel {
                 });
             }
         }
+
+        Millisecond now = new Millisecond();
+        totalBandwidthSeries.addOrUpdate(now, totalBw);
+        double avgLat = activeCount > 0 ? totalLat / activeCount : 0;
+        avgLatencySeries.addOrUpdate(now, avgLat);
 
         String modeTag = monitoringService.isUsingRealData() ? "[REAL]" : "[SIM]";
         lastUpdateLabel.setText(modeTag + " Last refreshed: " + formatTime() + " | Stream: Active (500ms)");

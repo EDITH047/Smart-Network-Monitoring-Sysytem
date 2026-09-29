@@ -1,8 +1,8 @@
-2026-09-27T18:30:32.098754Z 0 [System] [MY-015015] [Server] MySQL Server - start.
-2026-09-27T18:30:32.252444Z 0 [System] [MY-010116] [Server] C:\Program Files\MySQL\MySQL Server 8.4\bin\mysqld.exe (mysqld 8.4.9) starting as process 22288
-2026-09-27T18:30:32.259916Z 1 [System] [MY-013576] [InnoDB] InnoDB initialization has started.
-2026-09-27T18:30:32.759947Z 1 [System] [MY-013577] [InnoDB] InnoDB initialization has ended.
-2026-09-27T18:30:33.000305Z 0 [Warning] [MY-010068] [Server] CA certificate ca.pem is self signed.
-2026-09-27T18:30:33.000370Z 0 [System] [MY-013602] [Server] Channel mysql_main configured to support TLS. Encrypted connections are now supported for this channel.
-2026-09-27T18:30:33.025242Z 0 [System] [MY-011323] [Server] X Plugin ready for connections. Bind-address: '::' port: 33060
-2026-09-27T18:30:33.025328Z 0 [System] [MY-010931] [Server] C:\Program Files\MySQL\MySQL Server 8.4\bin\mysqld.exe: ready for connections. Version: '8.4.9'  socket: ''  port: 3306  MySQL Community Server - GPL.
+2026-09-29T17:06:08.150413Z 0 [System] [MY-015015] [Server] MySQL Server - start.
+2026-09-29T17:06:08.305030Z 0 [System] [MY-010116] [Server] C:\Program Files\MySQL\MySQL Server 8.4\bin\mysqld.exe (mysqld 8.4.9) starting as process 15808
+2026-09-29T17:06:08.313776Z 1 [System] [MY-013576] [InnoDB] InnoDB initialization has started.
+2026-09-29T17:06:08.657153Z 1 [System] [MY-013577] [InnoDB] InnoDB initialization has ended.
+2026-09-29T17:06:09.151263Z 0 [Warning] [MY-010068] [Server] CA certificate ca.pem is self signed.
+2026-09-29T17:06:09.151311Z 0 [System] [MY-013602] [Server] Channel mysql_main configured to support TLS. Encrypted connections are now supported for this channel.
+2026-09-29T17:06:09.190470Z 0 [System] [MY-011323] [Server] X Plugin ready for connections. Bind-address: '::' port: 33060
+2026-09-29T17:06:09.190623Z 0 [System] [MY-010931] [Server] C:\Program Files\MySQL\MySQL Server 8.4\bin\mysqld.exe: ready for connections. Version: '8.4.9'  socket: ''  port: 3306  MySQL Community Server - GPL.
