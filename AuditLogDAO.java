@@ -22,7 +22,11 @@ public class AuditLogDAO {
         try (Connection conn = DatabaseConfig.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
 
-            ps.setInt(1, log.getUserId());
+            if (log.getUserId() <= 0) {
+                ps.setNull(1, Types.INTEGER);
+            } else {
+                ps.setInt(1, log.getUserId());
+            }
             ps.setString(2, log.getAction());
             ps.setString(3, log.getDetails());
             ps.setString(4, log.getIpAddress());

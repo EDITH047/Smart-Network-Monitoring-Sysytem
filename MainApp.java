@@ -30,6 +30,9 @@ public class MainApp {
         // Auto-start MySQL if it is not currently running
         startMySQLIfNecessary();
 
+        // Ensure database tables and default admin user exist
+        ensureDatabaseAndAdmin();
+
         // Auto-discover network devices for this system
         try {
             new com.networkmonitor.service.NetworkDiscoveryService().discoverAndRegister();
@@ -38,13 +41,13 @@ public class MainApp {
         }
 
         // Register a SINGLE shutdown hook that:
-        //   1. Cleans all runtime data from the database
+        //   1. Cleans runtime data from the database (preserves audit_log and users)
         //   2. Closes the DB connection
         //   3. Shuts down the embedded MySQL server (if we started one)
         // Using one hook guarantees the correct order of operations.
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-            // Step 1: Clean runtime data from the database
-            System.out.println("[MainApp] Cleaning runtime data from database...");
+            // Step 1: Clean runtime data from the database (keep users & audit_log intact)
+            System.out.println("[MainApp] Cleaning runtime telemetry data from database...");
             try {
                 Connection conn = DatabaseConfig.getConnection();
                 Statement st = conn.createStatement();
@@ -56,7 +59,7 @@ public class MainApp {
                 st.executeUpdate("TRUNCATE TABLE optimization_results");
                 st.executeUpdate("TRUNCATE TABLE blocked_ips");
                 st.executeUpdate("TRUNCATE TABLE firewall_rules");
-                st.executeUpdate("TRUNCATE TABLE audit_log");
+                // Do NOT truncate audit_log so authentication & audit history is preserved
                 st.executeUpdate("TRUNCATE TABLE devices");
                 st.execute("SET FOREIGN_KEY_CHECKS = 1");
                 st.close();
@@ -65,8 +68,8 @@ public class MainApp {
                 System.err.println("[MainApp] Error cleaning database: " + e.getMessage());
             }
 
-            // Step 2: Close the DB connection
-            DatabaseConfig.closeConnection();
+            // Step 2: Shutdown Connection Pool
+            DatabaseConfig.shutdown();
 
             // Step 3: Shut down embedded MySQL server
             if (mysqlProcess != null && mysqlProcess.isAlive()) {
@@ -176,14 +179,75 @@ public class MainApp {
             // Start the process and store the reference for the shutdown hook
             mysqlProcess = pb.start();
             
-            // Wait a few seconds for it to start up
-            System.out.println("[MainApp] Waiting 3 seconds for MySQL to initialize...");
-            Thread.sleep(3000);
+            // Actively poll until MySQL port is open and accepting socket connections (up to 15s)
+            System.out.println("[MainApp] Waiting for MySQL to initialize on port 3306...");
+            boolean ready = false;
+            for (int i = 0; i < 30; i++) {
+                try (Socket s = new Socket("localhost", 3306)) {
+                    ready = true;
+                    System.out.println("[MainApp] MySQL is ready on port 3306.");
+                    break;
+                } catch (Exception ex) {
+                    Thread.sleep(500);
+                }
+            }
+            if (!ready) {
+                System.err.println("[MainApp] WARNING: Timed out waiting for MySQL to respond on port 3306.");
+            }
             
             System.out.println("[MainApp] MySQL auto-start procedure completed.");
             
         } catch (Exception e) {
             System.err.println("[MainApp] Failed to start MySQL automatically: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Ensures users and audit_log tables exist and seeds the default admin user
+     * (admin / admin123) if missing.
+     */
+    private static void ensureDatabaseAndAdmin() {
+        try (Connection conn = DatabaseConfig.getConnection();
+             Statement st = conn.createStatement()) {
+
+            st.execute("CREATE TABLE IF NOT EXISTS users (" +
+                    "user_id INT AUTO_INCREMENT PRIMARY KEY, " +
+                    "username VARCHAR(50) NOT NULL UNIQUE, " +
+                    "password_hash VARCHAR(255) NOT NULL, " +
+                    "full_name VARCHAR(100) NOT NULL, " +
+                    "email VARCHAR(100), " +
+                    "role ENUM('ADMIN', 'OPERATOR', 'VIEWER') NOT NULL DEFAULT 'VIEWER', " +
+                    "is_active BOOLEAN DEFAULT TRUE, " +
+                    "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, " +
+                    "last_login TIMESTAMP NULL)");
+
+            st.execute("CREATE TABLE IF NOT EXISTS audit_log (" +
+                    "log_id INT AUTO_INCREMENT PRIMARY KEY, " +
+                    "user_id INT, " +
+                    "action VARCHAR(100) NOT NULL, " +
+                    "details TEXT, " +
+                    "ip_address VARCHAR(45), " +
+                    "performed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, " +
+                    "FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE SET NULL)");
+
+            com.networkmonitor.dao.UserDAO userDAO = new com.networkmonitor.dao.UserDAO();
+            if (userDAO.findByUsername("admin") == null) {
+                System.out.println("[MainApp] Admin user not found. Seeding default admin user...");
+                com.networkmonitor.model.User defaultAdmin = new com.networkmonitor.model.User(
+                    "admin",
+                    "240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9",
+                    "System Administrator",
+                    "admin@network.local",
+                    "ADMIN"
+                );
+                userDAO.insertUser(defaultAdmin);
+                System.out.println("[MainApp] Default admin user (admin / admin123) seeded successfully.");
+            } else {
+                System.out.println("[MainApp] Admin user verified in database.");
+            }
+
+        } catch (Exception e) {
+            System.err.println("[MainApp] Database/Admin initialization check failed: " + e.getMessage());
         }
     }
 }

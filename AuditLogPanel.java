@@ -40,16 +40,6 @@ public class AuditLogPanel extends JPanel {
         titleLabel.setForeground(UITheme.TEXT_PRIMARY);
         headerPanel.add(titleLabel, BorderLayout.WEST);
         
-        JButton refreshBtn = new JButton("🔄 Refresh");
-        UITheme.styleNeutralButton(refreshBtn);
-        refreshBtn.addActionListener(e -> loadLogs());
-        headerPanel.add(refreshBtn, BorderLayout.EAST);
-        
-        add(headerPanel, BorderLayout.NORTH);
-
-        JPanel centerPanel = new JPanel(new BorderLayout());
-        UITheme.styleCard(centerPanel);
-
         tableModel = new DefaultTableModel(new String[]{"ID", "User", "Action", "Details", "IP Address", "Date"}, 0) {
             @Override
             public boolean isCellEditable(int row, int column) { return false; }
@@ -58,6 +48,21 @@ public class AuditLogPanel extends JPanel {
         logTable = new JTable(tableModel);
         logTable.setAutoCreateRowSorter(true);
         UITheme.styleTable(logTable);
+        
+        JPanel headerRight = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
+        headerRight.setOpaque(false);
+        headerRight.add(UITheme.createSearchBar(logTable));
+        
+        JButton refreshBtn = new JButton("🔄 Refresh");
+        UITheme.styleNeutralButton(refreshBtn);
+        refreshBtn.addActionListener(e -> loadLogs());
+        headerRight.add(refreshBtn);
+        
+        headerPanel.add(headerRight, BorderLayout.EAST);
+        add(headerPanel, BorderLayout.NORTH);
+
+        JPanel centerPanel = new JPanel(new BorderLayout());
+        UITheme.styleCard(centerPanel);
         
         logTable.getColumnModel().getColumn(0).setPreferredWidth(50);
         logTable.getColumnModel().getColumn(1).setPreferredWidth(120);

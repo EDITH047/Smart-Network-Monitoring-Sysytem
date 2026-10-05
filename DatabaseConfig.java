@@ -1,116 +1,79 @@
 package com.networkmonitor.config;
 
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.SQLException;
+import java.lang.reflect.Proxy;
 
 /**
  * DatabaseConfig - Singleton class to manage JDBC connection to MySQL
- *
- * All DAO classes use this class to get a database connection.
- * Connection pooling pattern: maintains a single connection instance.
+ * Uses a ConnectionPool for thread-safe concurrency and high efficiency.
  */
 public class DatabaseConfig {
 
-    // MySQL connection details
-    private static final String DB_URL = "jdbc:mysql://localhost:3306/network_monitor_db";
+    private static final String DB_URL = "jdbc:mysql://localhost:3306/network_monitor_db?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC";
     private static final String DB_USER = "root";
     private static final String DB_PASSWORD = "";
     private static final String DB_DRIVER = "com.mysql.cj.jdbc.Driver";
 
-    // Singleton instances
-    private static Connection realConnection;
-    private static Connection proxyConnection;
+    private static volatile ConnectionPool pool;
+
+    private DatabaseConfig() {}
 
     /**
-     * Private constructor to prevent instantiation
+     * Lazy-init and retrieve the ConnectionPool.
+     * Retries if previous attempts failed during startup.
      */
-    private DatabaseConfig() {
+    public static synchronized ConnectionPool getPool() throws SQLException {
+        if (pool == null) {
+            try {
+                Class.forName(DB_DRIVER);
+                pool = new ConnectionPool(DB_URL, DB_USER, DB_PASSWORD);
+                System.out.println("[DatabaseConfig] Connection pool initialized successfully.");
+            } catch (Exception e) {
+                System.err.println("[DatabaseConfig] Failed to initialize connection pool: " + e.getMessage());
+                throw new SQLException("Connection pool is not initialized: " + e.getMessage(), e);
+            }
+        }
+        return pool;
     }
 
     /**
-     * Get database connection (singleton pattern)
-     * Returns a proxy that suppresses close() calls from try-with-resources blocks.
-     *
-     * @return Connection object to the database
-     * @throws SQLException if connection fails
+     * Get database connection from the pool.
+     * Returns a proxy that intercepts close() and releases it back to the pool.
      */
     public static Connection getConnection() throws SQLException {
-        try {
-            // Load MySQL JDBC driver
-            Class.forName(DB_DRIVER);
-
-            // Check if connection is null or closed
-            if (realConnection == null || realConnection.isClosed()) {
-                realConnection = DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD);
-                
-                // Create a proxy to ignore close() calls from DAOs
-                proxyConnection = (Connection) java.lang.reflect.Proxy.newProxyInstance(
-                    Connection.class.getClassLoader(),
-                    new Class[]{Connection.class},
-                    (proxy, method, args) -> {
-                        if ("close".equals(method.getName())) {
-                            return null; // Ignore close() to keep singleton alive
-                        }
-                        try {
-                            return method.invoke(realConnection, args);
-                        } catch (java.lang.reflect.InvocationTargetException e) {
-                            throw e.getCause(); // Unwrap SQL exceptions
-                        }
-                    }
-                );
-                
-                System.out.println("[DatabaseConfig] New connection established");
+        ConnectionPool currentPool = getPool();
+        Connection realConnection = currentPool.getConnection();
+        
+        return (Connection) Proxy.newProxyInstance(
+            Connection.class.getClassLoader(),
+            new Class[]{Connection.class},
+            (proxy, method, args) -> {
+                if ("close".equals(method.getName())) {
+                    currentPool.releaseConnection(realConnection);
+                    return null;
+                }
+                try {
+                    return method.invoke(realConnection, args);
+                } catch (java.lang.reflect.InvocationTargetException e) {
+                    throw e.getCause(); // Unwrap SQL exceptions
+                }
             }
-
-            return proxyConnection;
-
-        } catch (ClassNotFoundException e) {
-            System.err.println("[DatabaseConfig] MySQL Driver not found: " + e.getMessage());
-            throw new SQLException("MySQL JDBC Driver not found", e);
-
-        } catch (SQLException e) {
-            System.err.println("[DatabaseConfig] Connection failed: " + e.getMessage());
-            throw e;
-        }
+        );
     }
-
+    
     /**
-     * Close the database connection (call on application shutdown)
+     * Gracefully shutdown the connection pool
      */
-    public static void closeConnection() {
-        if (realConnection != null) {
+    public static synchronized void shutdown() {
+        if (pool != null) {
             try {
-                realConnection.close();
-                System.out.println("[DatabaseConfig] Connection closed");
+                pool.shutdown();
+                pool = null;
+                System.out.println("[DatabaseConfig] Connection pool shutdown successfully.");
             } catch (SQLException e) {
-                System.err.println("[DatabaseConfig] Error closing connection: " + e.getMessage());
+                e.printStackTrace();
             }
         }
-    }
-
-    /**
-     * Check if connection is active
-     *
-     * @return true if connected and valid, false otherwise
-     */
-    public static boolean isConnected() {
-        try {
-            return realConnection != null && !realConnection.isClosed();
-        } catch (SQLException e) {
-            return false;
-        }
-    }
-
-    /**
-     * Reconnect to database (forces a new connection)
-     *
-     * @throws SQLException if reconnection fails
-     */
-    public static void reconnect() throws SQLException {
-        closeConnection();
-        realConnection = null;
-        proxyConnection = null;
-        getConnection();
     }
 }

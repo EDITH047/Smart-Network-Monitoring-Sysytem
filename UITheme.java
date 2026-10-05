@@ -12,14 +12,14 @@ import java.awt.event.MouseEvent;
  */
 public class UITheme {
 
-    // Primary Brand Colors
-    public static final Color PRIMARY_BLUE = new DynamicColor("Component.accentColor", 37, 99, 235);
-    public static final Color PRIMARY_HOVER = new DynamicColor("Button.default.hoverBackground", 29, 78, 216);
-    public static final Color SUCCESS_GREEN = new Color(22, 163, 74);
-    public static final Color SUCCESS_HOVER = new Color(21, 128, 61);
-    public static final Color DANGER_RED = new Color(220, 38, 38);
-    public static final Color DANGER_HOVER = new Color(185, 28, 28);
-    public static final Color WARNING_ORANGE = new Color(217, 119, 6);
+    // Primary Brand Colors (Vibrant Palette)
+    public static final Color PRIMARY_BLUE = new DynamicColor("Component.accentColor", 139, 92, 246); // Violet
+    public static final Color PRIMARY_HOVER = new DynamicColor("Button.default.hoverBackground", 124, 58, 237);
+    public static final Color SUCCESS_GREEN = new Color(16, 185, 129); // Emerald
+    public static final Color SUCCESS_HOVER = new Color(5, 150, 105);
+    public static final Color DANGER_RED = new Color(244, 63, 94); // Rose
+    public static final Color DANGER_HOVER = new Color(225, 29, 72);
+    public static final Color WARNING_ORANGE = new Color(245, 158, 11); // Amber
 
     // Neutral Surfaces & Texts
     public static final Color BG_DARK_HEADER = new DynamicColor("TitlePane.background", 15, 23, 42);
@@ -200,5 +200,39 @@ public class UITheme {
         tabbedPane.setFont(FONT_SUBHEADER);
         tabbedPane.setForeground(TEXT_PRIMARY);     // Tab text color — dark for readability
         tabbedPane.setBackground(CARD_BG);
+    }
+    
+    public static JPanel createSearchBar(JTable table) {
+        JPanel searchPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
+        searchPanel.setOpaque(false);
+        
+        JLabel searchIcon = new JLabel("🔍 Search:");
+        searchIcon.setFont(FONT_BODY_BOLD);
+        searchIcon.setForeground(TEXT_PRIMARY);
+        
+        JTextField searchField = new JTextField(15);
+        styleTextField(searchField);
+        searchField.putClientProperty("JTextField.placeholderText", "Filter...");
+        
+        searchField.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
+            private void updateFilter() {
+                javax.swing.table.TableRowSorter<?> sorter = (javax.swing.table.TableRowSorter<?>) table.getRowSorter();
+                if (sorter != null) {
+                    String text = searchField.getText();
+                    if (text.trim().isEmpty()) {
+                        sorter.setRowFilter(null);
+                    } else {
+                        sorter.setRowFilter(javax.swing.RowFilter.regexFilter("(?i)" + text));
+                    }
+                }
+            }
+            @Override public void insertUpdate(javax.swing.event.DocumentEvent e) { updateFilter(); }
+            @Override public void removeUpdate(javax.swing.event.DocumentEvent e) { updateFilter(); }
+            @Override public void changedUpdate(javax.swing.event.DocumentEvent e) { updateFilter(); }
+        });
+        
+        searchPanel.add(searchIcon);
+        searchPanel.add(searchField);
+        return searchPanel;
     }
 }

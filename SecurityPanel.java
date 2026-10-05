@@ -99,10 +99,7 @@ public class SecurityPanel extends JPanel {
         refreshBtn.addActionListener(e -> loadData());
         btnPanel.add(refreshBtn);
 
-        headerPanel.add(btnPanel, BorderLayout.EAST);
-        panel.add(headerPanel, BorderLayout.NORTH);
-
-        // Table
+        // Table Initialization First
         eventsTableModel = new DefaultTableModel() {
             @Override
             public boolean isCellEditable(int row, int column) { return false; }
@@ -113,6 +110,10 @@ public class SecurityPanel extends JPanel {
 
         eventsTable = new JTable(eventsTableModel);
         eventsTable.setAutoCreateRowSorter(true);
+
+        btnPanel.add(UITheme.createSearchBar(eventsTable), 0);
+        headerPanel.add(btnPanel, BorderLayout.EAST);
+        panel.add(headerPanel, BorderLayout.NORTH);
         UITheme.styleTable(eventsTable);
         eventsTable.getColumnModel().getColumn(EVENT_COL_SEVERITY).setCellRenderer(new SeverityCellRenderer());
 
@@ -152,10 +153,7 @@ public class SecurityPanel extends JPanel {
         unblockBtn.addActionListener(e -> unblockSelectedIp());
         btnPanel.add(unblockBtn);
 
-        headerPanel.add(btnPanel, BorderLayout.EAST);
-        panel.add(headerPanel, BorderLayout.NORTH);
-
-        // Table
+        // Table Initialization First
         blockedIpTableModel = new DefaultTableModel() {
             @Override
             public boolean isCellEditable(int row, int column) { return false; }
@@ -166,6 +164,10 @@ public class SecurityPanel extends JPanel {
 
         blockedIpTable = new JTable(blockedIpTableModel);
         blockedIpTable.setAutoCreateRowSorter(true);
+
+        btnPanel.add(UITheme.createSearchBar(blockedIpTable), 0);
+        headerPanel.add(btnPanel, BorderLayout.EAST);
+        panel.add(headerPanel, BorderLayout.NORTH);
         UITheme.styleTable(blockedIpTable);
 
         JScrollPane scrollPane = new JScrollPane(blockedIpTable);
@@ -258,36 +260,27 @@ public class SecurityPanel extends JPanel {
         return "ADMIN".equals(role) || "OPERATOR".equals(role);
     }
 
-    private static class SeverityCellRenderer extends JLabel implements TableCellRenderer {
+    private static class SeverityCellRenderer extends javax.swing.table.DefaultTableCellRenderer {
         SeverityCellRenderer() {
-            setOpaque(true);
             setHorizontalAlignment(CENTER);
             setFont(UITheme.FONT_BODY_BOLD);
         }
 
         @Override
         public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
+            super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
             String severity = (String) value;
             setText(severity);
 
             if ("CRITICAL".equals(severity)) {
-                setBackground(new Color(254, 226, 226));
-                setForeground(UITheme.DANGER_RED);
+                if (!isSelected) setForeground(UITheme.DANGER_RED);
                 setText("🔥 CRITICAL");
             } else if ("HIGH".equals(severity)) {
-                setBackground(new Color(254, 243, 199));
-                setForeground(UITheme.WARNING_ORANGE);
+                if (!isSelected) setForeground(UITheme.WARNING_ORANGE);
             } else if ("MEDIUM".equals(severity)) {
-                setBackground(new Color(255, 237, 213));
-                setForeground(new Color(234, 88, 12));
+                if (!isSelected) setForeground(new Color(234, 88, 12));
             } else {
-                setBackground(new Color(241, 245, 249));
-                setForeground(UITheme.TEXT_MUTED);
-            }
-
-            if (isSelected) {
-                setBackground(UITheme.PRIMARY_BLUE);
-                setForeground(UITheme.TEXT_LIGHT);
+                if (!isSelected) setForeground(UITheme.TEXT_MUTED);
             }
 
             return this;

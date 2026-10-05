@@ -363,9 +363,8 @@ public class DevicePanel extends JPanel {
     /**
      * High contrast cell renderer for Status Column
      */
-    private static class StatusCellRenderer extends JLabel implements TableCellRenderer {
+    private static class StatusCellRenderer extends javax.swing.table.DefaultTableCellRenderer {
         StatusCellRenderer() {
-            setOpaque(true);
             setHorizontalAlignment(CENTER);
             setFont(UITheme.FONT_BODY_BOLD);
         }
@@ -373,25 +372,18 @@ public class DevicePanel extends JPanel {
         @Override
         public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected,
                                                        boolean hasFocus, int row, int column) {
+            super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
             String status = (String) value;
 
             if ("ONLINE".equals(status)) {
-                setBackground(new Color(220, 252, 231));
-                setForeground(UITheme.SUCCESS_GREEN);
+                if (!isSelected) setForeground(UITheme.SUCCESS_GREEN);
                 setText("🟢 ONLINE");
             } else if ("OFFLINE".equals(status)) {
-                setBackground(new Color(254, 226, 226));
-                setForeground(UITheme.DANGER_RED);
+                if (!isSelected) setForeground(UITheme.DANGER_RED);
                 setText("🔴 OFFLINE");
             } else {
-                setBackground(new Color(254, 243, 199));
-                setForeground(UITheme.WARNING_ORANGE);
+                if (!isSelected) setForeground(UITheme.WARNING_ORANGE);
                 setText("🟡 WARNING");
-            }
-
-            if (isSelected) {
-                setBackground(UITheme.PRIMARY_BLUE);
-                setForeground(UITheme.TEXT_LIGHT);
             }
 
             return this;

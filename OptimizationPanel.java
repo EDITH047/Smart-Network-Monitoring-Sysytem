@@ -52,14 +52,6 @@ public class OptimizationPanel extends JPanel {
 
         btnPanel.add(analyzeBtn);
         btnPanel.add(refreshBtn);
-        headerPanel.add(btnPanel, BorderLayout.EAST);
-
-        add(headerPanel, BorderLayout.NORTH);
-
-        // Table
-        JPanel tablePanel = new JPanel(new BorderLayout());
-        UITheme.styleCard(tablePanel);
-
         tableModel = new DefaultTableModel(new String[]{
             "Device ID", "Current B/W", "Recommended", "Score", "Suggestion", "Analyzed At"
         }, 0) {
@@ -71,6 +63,15 @@ public class OptimizationPanel extends JPanel {
 
         resultsTable = new JTable(tableModel);
         resultsTable.setAutoCreateRowSorter(true);
+
+        btnPanel.add(UITheme.createSearchBar(resultsTable), 0);
+        headerPanel.add(btnPanel, BorderLayout.EAST);
+
+        add(headerPanel, BorderLayout.NORTH);
+
+        // Table
+        JPanel tablePanel = new JPanel(new BorderLayout());
+        UITheme.styleCard(tablePanel);
         UITheme.styleTable(resultsTable);
 
         JScrollPane scrollPane = new JScrollPane(resultsTable);

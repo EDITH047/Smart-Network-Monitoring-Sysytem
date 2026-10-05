@@ -73,9 +73,6 @@ public class AlertPanel extends JPanel {
         ackButton.addActionListener(e -> acknowledgeSelectedAlert());
         controlPanel.add(ackButton);
 
-        headerPanel.add(controlPanel, BorderLayout.EAST);
-        add(headerPanel, BorderLayout.NORTH);
-
         // Table
         String[] columns = {"ID", "Severity", "Device", "Alert Type", "Message", "Time", "Status"};
         tableModel = new DefaultTableModel(columns, 0) {
@@ -89,6 +86,10 @@ public class AlertPanel extends JPanel {
         alertTable.setAutoCreateRowSorter(true);
         UITheme.styleTable(alertTable);
         alertTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        
+        controlPanel.add(UITheme.createSearchBar(alertTable), 0);
+        headerPanel.add(controlPanel, BorderLayout.EAST);
+        add(headerPanel, BorderLayout.NORTH);
         
         // Custom cell renderer for Severity column
         alertTable.getColumnModel().getColumn(1).setCellRenderer(new DefaultTableCellRenderer() {

@@ -253,9 +253,6 @@ public class MonitoringPanel extends JPanel {
         JPanel headerPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
         headerPanel.setOpaque(false);
         headerPanel.setBorder(BorderFactory.createEmptyBorder(0, 0, 10, 0));
-        headerPanel.add(tableTitle);
-        tablePanel.add(headerPanel, BorderLayout.NORTH);
-
         tableModel = new DefaultTableModel() {
             @Override
             public boolean isCellEditable(int row, int column) {
@@ -269,6 +266,15 @@ public class MonitoringPanel extends JPanel {
 
         metricsTable = new JTable(tableModel);
         metricsTable.setAutoCreateRowSorter(true);
+        
+        JPanel titleAndSearch = new JPanel(new BorderLayout());
+        titleAndSearch.setOpaque(false);
+        titleAndSearch.add(tableTitle, BorderLayout.WEST);
+        titleAndSearch.add(UITheme.createSearchBar(metricsTable), BorderLayout.EAST);
+        
+        headerPanel.add(titleAndSearch);
+        tablePanel.add(headerPanel, BorderLayout.NORTH);
+        
         UITheme.styleTable(metricsTable);
 
         metricsTable.getColumnModel().getColumn(0).setPreferredWidth(140);
@@ -485,9 +491,8 @@ public class MonitoringPanel extends JPanel {
 
     // ========== Custom Cell Renderers ==========
 
-    private static class StatusCellRenderer extends JLabel implements TableCellRenderer {
+    private static class StatusCellRenderer extends javax.swing.table.DefaultTableCellRenderer {
         StatusCellRenderer() {
-            setOpaque(true);
             setHorizontalAlignment(CENTER);
             setFont(UITheme.FONT_BODY_BOLD);
         }
@@ -495,52 +500,40 @@ public class MonitoringPanel extends JPanel {
         @Override
         public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected,
                                                        boolean hasFocus, int row, int column) {
+            super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
             String status = (String) value;
 
             if ("ONLINE".equals(status)) {
-                setBackground(new Color(220, 252, 231));
-                setForeground(UITheme.SUCCESS_GREEN);
+                if (!isSelected) setForeground(UITheme.SUCCESS_GREEN);
                 setText("🟢 ONLINE");
             } else if ("OFFLINE".equals(status)) {
-                setBackground(new Color(254, 226, 226));
-                setForeground(UITheme.DANGER_RED);
+                if (!isSelected) setForeground(UITheme.DANGER_RED);
                 setText("🔴 OFFLINE");
             } else if ("CRITICAL".equals(status)) {
-                setBackground(new Color(254, 202, 202));
-                setForeground(UITheme.DANGER_RED);
+                if (!isSelected) setForeground(UITheme.DANGER_RED);
                 setText("🔴 CRITICAL");
             } else {
-                setBackground(new Color(254, 243, 199));
-                setForeground(UITheme.WARNING_ORANGE);
+                if (!isSelected) setForeground(UITheme.WARNING_ORANGE);
                 setText("🟡 WARNING");
-            }
-
-            if (isSelected) {
-                setBackground(UITheme.PRIMARY_BLUE);
-                setForeground(UITheme.TEXT_LIGHT);
             }
 
             return this;
         }
     }
 
-    private static class LatencyCellRenderer extends JLabel implements TableCellRenderer {
+    private static class LatencyCellRenderer extends javax.swing.table.DefaultTableCellRenderer {
         LatencyCellRenderer() {
-            setOpaque(true);
             setFont(UITheme.FONT_BODY);
         }
 
         @Override
         public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected,
                                                        boolean hasFocus, int row, int column) {
+            super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
             String text = (String) value;
             setText(text);
 
-            if (isSelected) {
-                setBackground(UITheme.PRIMARY_BLUE);
-                setForeground(UITheme.TEXT_LIGHT);
-            } else {
-                setBackground(UITheme.CARD_BG);
+            if (!isSelected) {
                 try {
                     double latency = Double.parseDouble(text.replace(" ms", ""));
                     if (latency >= 9999) {
@@ -561,23 +554,19 @@ public class MonitoringPanel extends JPanel {
         }
     }
 
-    private static class PacketLossCellRenderer extends JLabel implements TableCellRenderer {
+    private static class PacketLossCellRenderer extends javax.swing.table.DefaultTableCellRenderer {
         PacketLossCellRenderer() {
-            setOpaque(true);
             setFont(UITheme.FONT_BODY);
         }
 
         @Override
         public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected,
                                                        boolean hasFocus, int row, int column) {
+            super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
             String text = (String) value;
             setText(text);
 
-            if (isSelected) {
-                setBackground(UITheme.PRIMARY_BLUE);
-                setForeground(UITheme.TEXT_LIGHT);
-            } else {
-                setBackground(UITheme.CARD_BG);
+            if (!isSelected) {
                 try {
                     double loss = Double.parseDouble(text.replace("%", ""));
                     if (loss >= 100) {

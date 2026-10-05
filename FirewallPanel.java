@@ -92,9 +92,6 @@ public class FirewallPanel extends JPanel {
         refreshBtn.addActionListener(e -> loadRules());
         btnPanel.add(refreshBtn);
 
-        topPanel.add(btnPanel, BorderLayout.EAST);
-        add(topPanel, BorderLayout.NORTH);
-
         // Center Panel: Rules Table
         JPanel centerPanel = new JPanel(new BorderLayout());
         UITheme.styleCard(centerPanel);
@@ -109,6 +106,10 @@ public class FirewallPanel extends JPanel {
 
         rulesTable = new JTable(tableModel);
         rulesTable.setAutoCreateRowSorter(true);
+
+        btnPanel.add(UITheme.createSearchBar(rulesTable), 0);
+        topPanel.add(btnPanel, BorderLayout.EAST);
+        add(topPanel, BorderLayout.NORTH);
         UITheme.styleTable(rulesTable);
 
         // Column widths
@@ -365,43 +366,38 @@ public class FirewallPanel extends JPanel {
         return "ADMIN".equals(role) || "OPERATOR".equals(role);
     }
 
-    private static class ActionCellRenderer extends JLabel implements TableCellRenderer {
-        ActionCellRenderer() { setOpaque(true); setHorizontalAlignment(CENTER); setFont(UITheme.FONT_BODY_BOLD); }
+    private static class ActionCellRenderer extends javax.swing.table.DefaultTableCellRenderer {
+        ActionCellRenderer() { setHorizontalAlignment(CENTER); setFont(UITheme.FONT_BODY_BOLD); }
 
         @Override
         public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
+            super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
             String act = (String) value;
             setText(act);
             if ("ALLOW".equals(act)) {
-                setBackground(new Color(220, 252, 231));
-                setForeground(UITheme.SUCCESS_GREEN);
+                if (!isSelected) setForeground(UITheme.SUCCESS_GREEN);
             } else if ("BLOCK".equals(act)) {
-                setBackground(new Color(254, 226, 226));
-                setForeground(UITheme.DANGER_RED);
+                if (!isSelected) setForeground(UITheme.DANGER_RED);
             } else if ("RATE_LIMIT".equals(act)) {
-                setBackground(new Color(254, 243, 199));
-                setForeground(UITheme.WARNING_ORANGE);
+                if (!isSelected) setForeground(UITheme.WARNING_ORANGE);
             }
-            if (isSelected) { setBackground(UITheme.PRIMARY_BLUE); setForeground(UITheme.TEXT_LIGHT); }
             return this;
         }
     }
 
-    private static class StatusCellRenderer extends JLabel implements TableCellRenderer {
-        StatusCellRenderer() { setOpaque(true); setHorizontalAlignment(CENTER); setFont(UITheme.FONT_BODY_BOLD); }
+    private static class StatusCellRenderer extends javax.swing.table.DefaultTableCellRenderer {
+        StatusCellRenderer() { setHorizontalAlignment(CENTER); setFont(UITheme.FONT_BODY_BOLD); }
 
         @Override
         public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
+            super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
             String stat = (String) value;
             setText(stat);
             if ("ACTIVE".equals(stat)) {
-                setBackground(new Color(220, 252, 231));
-                setForeground(UITheme.SUCCESS_GREEN);
+                if (!isSelected) setForeground(UITheme.SUCCESS_GREEN);
             } else {
-                setBackground(new Color(241, 245, 249));
-                setForeground(UITheme.TEXT_MUTED);
+                if (!isSelected) setForeground(UITheme.TEXT_MUTED);
             }
-            if (isSelected) { setBackground(UITheme.PRIMARY_BLUE); setForeground(UITheme.TEXT_LIGHT); }
             return this;
         }
     }

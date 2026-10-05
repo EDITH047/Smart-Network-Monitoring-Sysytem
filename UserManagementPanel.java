@@ -67,9 +67,6 @@ public class UserManagementPanel extends JPanel {
             btnPanel.add(resetPassBtn);
         }
         btnPanel.add(refreshBtn);
-        headerPanel.add(btnPanel, BorderLayout.EAST);
-
-        add(headerPanel, BorderLayout.NORTH);
 
         // Table
         JPanel tablePanel = new JPanel(new BorderLayout());
@@ -85,6 +82,10 @@ public class UserManagementPanel extends JPanel {
         userTable = new JTable(tableModel);
         userTable.setAutoCreateRowSorter(true);
         UITheme.styleTable(userTable);
+
+        btnPanel.add(UITheme.createSearchBar(userTable), 0); // Add search before buttons
+        headerPanel.add(btnPanel, BorderLayout.EAST);
+        add(headerPanel, BorderLayout.NORTH);
 
         JScrollPane scrollPane = new JScrollPane(userTable);
         scrollPane.setBorder(BorderFactory.createLineBorder(UITheme.BORDER_LIGHT));

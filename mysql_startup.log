@@ -1,8 +1,8 @@
-2026-09-29T17:06:08.150413Z 0 [System] [MY-015015] [Server] MySQL Server - start.
-2026-09-29T17:06:08.305030Z 0 [System] [MY-010116] [Server] C:\Program Files\MySQL\MySQL Server 8.4\bin\mysqld.exe (mysqld 8.4.9) starting as process 15808
-2026-09-29T17:06:08.313776Z 1 [System] [MY-013576] [InnoDB] InnoDB initialization has started.
-2026-09-29T17:06:08.657153Z 1 [System] [MY-013577] [InnoDB] InnoDB initialization has ended.
-2026-09-29T17:06:09.151263Z 0 [Warning] [MY-010068] [Server] CA certificate ca.pem is self signed.
-2026-09-29T17:06:09.151311Z 0 [System] [MY-013602] [Server] Channel mysql_main configured to support TLS. Encrypted connections are now supported for this channel.
-2026-09-29T17:06:09.190470Z 0 [System] [MY-011323] [Server] X Plugin ready for connections. Bind-address: '::' port: 33060
-2026-09-29T17:06:09.190623Z 0 [System] [MY-010931] [Server] C:\Program Files\MySQL\MySQL Server 8.4\bin\mysqld.exe: ready for connections. Version: '8.4.9'  socket: ''  port: 3306  MySQL Community Server - GPL.
+2026-10-05T16:50:45.555987Z 0 [System] [MY-015015] [Server] MySQL Server - start.
+2026-10-05T16:50:45.775983Z 0 [System] [MY-010116] [Server] C:\Program Files\MySQL\MySQL Server 8.4\bin\mysqld.exe (mysqld 8.4.9) starting as process 5556
+2026-10-05T16:50:45.783008Z 1 [System] [MY-013576] [InnoDB] InnoDB initialization has started.
+2026-10-05T16:50:46.451052Z 1 [System] [MY-013577] [InnoDB] InnoDB initialization has ended.
+2026-10-05T16:50:46.718724Z 0 [Warning] [MY-010068] [Server] CA certificate ca.pem is self signed.
+2026-10-05T16:50:46.718769Z 0 [System] [MY-013602] [Server] Channel mysql_main configured to support TLS. Encrypted connections are now supported for this channel.
+2026-10-05T16:50:46.753082Z 0 [System] [MY-011323] [Server] X Plugin ready for connections. Bind-address: '::' port: 33060
+2026-10-05T16:50:46.753206Z 0 [System] [MY-010931] [Server] C:\Program Files\MySQL\MySQL Server 8.4\bin\mysqld.exe: ready for connections. Version: '8.4.9'  socket: ''  port: 3306  MySQL Community Server - GPL.

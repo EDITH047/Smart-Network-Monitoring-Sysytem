@@ -26,30 +26,61 @@ public class AlertService {
         return instance;
     }
 
+    // Debounce maps for smart alerting
+    private final java.util.concurrent.ConcurrentHashMap<String, Integer> consecutiveViolations = new java.util.concurrent.ConcurrentHashMap<>();
+    private final java.util.concurrent.ConcurrentHashMap<String, Long> lastAlertTime = new java.util.concurrent.ConcurrentHashMap<>();
+    
+    private static final int REQUIRED_VIOLATIONS = 3;
+    private static final long COOLDOWN_MS = 15 * 60 * 1000; // 15 minutes cooldown
+
     /**
-     * Check thresholds for a metric and create alerts if needed
+     * Check thresholds for a metric and create alerts using hysteresis and cooldowns.
      */
     public void checkThresholds(NetworkMetric metric) {
-        if (metric == null) {
-            return;
-        }
+        if (metric == null) return;
+        
+        int deviceId = metric.getDeviceId();
+        boolean isOffline = metric.getLatencyMs() >= 9999 || metric.getPacketLossPct() >= 100.0;
+        
+        // 1. Device Offline State
+        checkState(deviceId, "DEVICE_OFFLINE", isOffline, "CRITICAL", "Device is OFFLINE or completely unreachable.");
+        
+        // 2. Latency State (Only check if device is online)
+        boolean highLatency = !isOffline && metric.getLatencyMs() > latencyThreshold;
+        checkState(deviceId, "LATENCY_THRESHOLD", highLatency, "WARNING", 
+                   "High latency detected: " + String.format("%.1f", metric.getLatencyMs()) + "ms");
+                   
+        // 3. Packet Loss State (Only check if device is online)
+        boolean highPacketLoss = !isOffline && metric.getPacketLossPct() > packetLossThreshold;
+        checkState(deviceId, "PACKET_LOSS_THRESHOLD", highPacketLoss, "WARNING", 
+                   "Packet loss detected: " + String.format("%.1f", metric.getPacketLossPct()) + "%");
+                   
+        // 4. Bandwidth State
+        boolean highBandwidth = metric.getBandwidthUsage() > bandwidthThreshold;
+        checkState(deviceId, "BANDWIDTH_THRESHOLD", highBandwidth, "CRITICAL", 
+                   "High bandwidth usage: " + String.format("%.1f", metric.getBandwidthUsage()) + "%");
+    }
 
-        // Check bandwidth
-        if (metric.getBandwidthUsage() > bandwidthThreshold) {
-            createAlert(metric.getDeviceId(), "BANDWIDTH_THRESHOLD",
-                    "CRITICAL", "High bandwidth usage: " + String.format("%.1f", metric.getBandwidthUsage()) + "%");
-        }
-
-        // Check latency
-        if (metric.getLatencyMs() > latencyThreshold) {
-            createAlert(metric.getDeviceId(), "LATENCY_THRESHOLD",
-                    "WARNING", "High latency detected: " + String.format("%.1f", metric.getLatencyMs()) + "ms");
-        }
-
-        // Check packet loss
-        if (metric.getPacketLossPct() > packetLossThreshold) {
-            createAlert(metric.getDeviceId(), "PACKET_LOSS_THRESHOLD",
-                    "WARNING", "Packet loss detected: " + String.format("%.1f", metric.getPacketLossPct()) + "%");
+    private void checkState(int deviceId, String alertType, boolean isViolating, String severity, String message) {
+        String key = deviceId + "_" + alertType;
+        
+        if (isViolating) {
+            int violations = consecutiveViolations.getOrDefault(key, 0) + 1;
+            consecutiveViolations.put(key, violations);
+            
+            if (violations >= REQUIRED_VIOLATIONS) {
+                long now = System.currentTimeMillis();
+                long lastTime = lastAlertTime.getOrDefault(key, 0L);
+                
+                // Only alert if we've passed the cooldown
+                if (now - lastTime > COOLDOWN_MS) {
+                    createAlert(deviceId, alertType, severity, message);
+                    lastAlertTime.put(key, now); // Reset the cooldown timer
+                }
+            }
+        } else {
+            // Immediately reset violation counter if metric returns to normal
+            consecutiveViolations.remove(key);
         }
     }
 
@@ -62,6 +93,14 @@ public class AlertService {
 
         if (success) {
             System.out.println("[AlertService] Alert created: " + severity + " - " + alertType);
+            if ("CRITICAL".equals(severity) || "HIGH".equals(severity)) {
+                try {
+                    com.networkmonitor.service.NotificationService.getInstance().showNotification(
+                        "Network Alert (" + severity + ")", message, 
+                        java.awt.TrayIcon.MessageType.WARNING
+                    );
+                } catch (Exception e) {}
+            }
         }
 
         return success;
