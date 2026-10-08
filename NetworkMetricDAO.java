@@ -314,4 +314,47 @@ public class NetworkMetricDAO {
         metric.setRecordedAt(rs.getTimestamp("recorded_at"));
         return metric;
     }
+
+    // =========================================================
+    // Aggregated query for bulk optimization (eliminates N+1)
+    // =========================================================
+
+    /**
+     * Bulk-fetch average and peak bandwidth for ALL devices in one query.
+     * Uses idx_metrics_time index — does NOT lock the live metrics table.
+     */
+    public static class AggregatedMetrics {
+        public int deviceId;
+        public double avgBandwidth;
+        public double peakBandwidth;
+    }
+
+    public List<AggregatedMetrics> getAggregatedMetricsForAllDevices(int hours) {
+        List<AggregatedMetrics> list = new ArrayList<>();
+        String sql = "SELECT device_id, " +
+                "AVG(bandwidth_usage) AS avg_bw, " +
+                "MAX(bandwidth_usage) AS peak_bw " +
+                "FROM network_metrics " +
+                "WHERE recorded_at >= DATE_SUB(NOW(), INTERVAL ? HOUR) " +
+                "GROUP BY device_id";
+
+        try (Connection conn = DatabaseConfig.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ps.setInt(1, hours);
+            ResultSet rs = ps.executeQuery();
+
+            while (rs.next()) {
+                AggregatedMetrics am = new AggregatedMetrics();
+                am.deviceId = rs.getInt("device_id");
+                am.avgBandwidth = rs.getDouble("avg_bw");
+                am.peakBandwidth = rs.getDouble("peak_bw");
+                list.add(am);
+            }
+
+        } catch (SQLException e) {
+            System.err.println("[NetworkMetricDAO] Error getting aggregated metrics: " + e.getMessage());
+        }
+        return list;
+    }
 }

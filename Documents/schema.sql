@@ -151,3 +151,11 @@ VALUES ('admin', '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720
 -- Devices are auto-discovered at runtime by NetworkDiscoveryService.
 -- No sample/hardcoded device inserts needed.
 -- ==========================================================
+
+-- Protects MonitoringService: allows the new aggregated metric query
+-- to use a time-range filter without scanning the full metrics table.
+CREATE INDEX idx_metrics_time ON network_metrics(recorded_at);
+
+-- Speeds up OptimizationDAO.getLatestResults() used by OptimizationPanel
+-- and ReportService as the result table grows over time.
+CREATE INDEX idx_opt_device_time ON optimization_results(device_id, analyzed_at);

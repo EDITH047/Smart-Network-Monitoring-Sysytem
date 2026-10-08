@@ -246,8 +246,40 @@ public class MainApp {
                 System.out.println("[MainApp] Admin user verified in database.");
             }
 
+            // Ensure performance indexes exist for telemetry and optimization
+            ensureIndex(conn, "network_metrics", "idx_metrics_time", "CREATE INDEX idx_metrics_time ON network_metrics(recorded_at)");
+            ensureIndex(conn, "optimization_results", "idx_opt_device_time", "CREATE INDEX idx_opt_device_time ON optimization_results(device_id, analyzed_at)");
+
         } catch (Exception e) {
             System.err.println("[MainApp] Database/Admin initialization check failed: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Checks whether an index exists on a table and creates it if missing.
+     */
+    private static void ensureIndex(Connection conn, String tableName, String indexName, String createSql) {
+        try {
+            java.sql.DatabaseMetaData meta = conn.getMetaData();
+            try (java.sql.ResultSet rs = meta.getIndexInfo(null, null, tableName, false, false)) {
+                boolean exists = false;
+                while (rs.next()) {
+                    if (indexName.equalsIgnoreCase(rs.getString("INDEX_NAME"))) {
+                        exists = true;
+                        break;
+                    }
+                }
+                if (!exists) {
+                    try (Statement st = conn.createStatement()) {
+                        st.execute(createSql);
+                        System.out.println("[MainApp] Created index " + indexName + " on " + tableName);
+                    }
+                } else {
+                    System.out.println("[MainApp] Index " + indexName + " verified on " + tableName);
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("[MainApp] Note verifying index " + indexName + ": " + e.getMessage());
         }
     }
 }

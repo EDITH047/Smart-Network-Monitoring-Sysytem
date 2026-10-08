@@ -186,4 +186,47 @@ public class OptimizationDAO {
         result.setAnalyzedAt(rs.getTimestamp("analyzed_at"));
         return result;
     }
+
+    /**
+     * Batch insert optimization results in a single transaction.
+     * IMPORTANT: autoCommit is always restored in finally{} to protect the connection pool.
+     */
+    public boolean batchInsertResults(List<OptimizationResult> results) {
+        if (results == null || results.isEmpty()) return false;
+
+        String sql = "INSERT INTO optimization_results " +
+                "(device_id, current_bandwidth, recommended_bandwidth, optimization_score, suggestion, analyzed_at) " +
+                "VALUES (?, ?, ?, ?, ?, NOW())";
+
+        try (Connection conn = DatabaseConfig.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            conn.setAutoCommit(false);
+            try {
+                for (OptimizationResult result : results) {
+                    ps.setInt(1, result.getDeviceId());
+                    ps.setDouble(2, result.getCurrentBandwidth());
+                    ps.setDouble(3, result.getRecommendedBandwidth());
+                    ps.setInt(4, result.getOptimizationScore());
+                    ps.setString(5, result.getSuggestion());
+                    ps.addBatch();
+                }
+                int[] rows = ps.executeBatch();
+                conn.commit();
+                System.out.println("[OptimizationDAO] Batch inserted " + rows.length + " results.");
+                return true;
+
+            } catch (SQLException e) {
+                conn.rollback(); // Roll back on failure
+                System.err.println("[OptimizationDAO] Batch insert failed, rolled back: " + e.getMessage());
+                return false;
+            } finally {
+                conn.setAutoCommit(true); // ALWAYS restore — protects connection pool
+            }
+
+        } catch (SQLException e) {
+            System.err.println("[OptimizationDAO] Connection error during batch insert: " + e.getMessage());
+            return false;
+        }
+    }
 }

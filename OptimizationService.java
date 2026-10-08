@@ -6,6 +6,7 @@ import com.networkmonitor.model.NetworkMetric;
 import com.networkmonitor.model.OptimizationResult;
 import java.sql.Timestamp;
 import java.util.List;
+import java.util.ArrayList;
 
 /**
  * OptimizationService - Handles bandwidth optimization analysis and recommendations
@@ -25,31 +26,48 @@ public class OptimizationService {
     }
 
     /**
-     * Analyze all devices and generate optimization results
+     * Analyze ALL devices using a single aggregated DB query (eliminates N+1).
+     * Does NOT affect MonitoringService's live collect/persist loops.
      */
     public List<OptimizationResult> analyzeAll() {
-        System.out.println("[OptimizationService] Starting network analysis...");
+        System.out.println("[OptimizationService] Starting efficient bulk network analysis...");
 
-        MonitoringService monitoringService = MonitoringService.getInstance();
-        List<com.networkmonitor.model.Device> devices = DeviceCache.getInstance().getAllDevices();
+        // ONE read query for all devices (uses idx_metrics_time index)
+        List<NetworkMetricDAO.AggregatedMetrics> allMetrics =
+                metricDAO.getAggregatedMetricsForAllDevices(24);
 
-        for (com.networkmonitor.model.Device device : devices) {
-            try {
-                analyzeDevice(device.getDeviceId());
-            } catch (Exception e) {
-                System.err.println("[OptimizationService] Error analyzing device " + device.getDeviceId() + ": " + e.getMessage());
-            }
+        List<OptimizationResult> resultsToSave = new ArrayList<>();
+
+        for (NetworkMetricDAO.AggregatedMetrics metrics : allMetrics) {
+            int score = calculateOptimizationScore(metrics.avgBandwidth, metrics.peakBandwidth);
+            String suggestion = generateSuggestion(metrics.avgBandwidth, metrics.peakBandwidth, score);
+            double recommendedBandwidth = metrics.peakBandwidth * 1.2;
+
+            OptimizationResult result = new OptimizationResult(
+                    metrics.deviceId,
+                    metrics.avgBandwidth,
+                    recommendedBandwidth,
+                    score,
+                    suggestion
+            );
+            resultsToSave.add(result);
+            System.out.println("[OptimizationService] Device " + metrics.deviceId + " scored: " + score);
         }
 
-        System.out.println("[OptimizationService] Analysis complete");
+        // ONE batch write for all results (transactional, uses idx_opt_device_time)
+        if (!resultsToSave.isEmpty()) {
+            optimizationDAO.batchInsertResults(resultsToSave);
+        }
+
+        System.out.println("[OptimizationService] Bulk analysis complete. Analyzed " + resultsToSave.size() + " devices.");
         return optimizationDAO.getLatestResults();
     }
 
     /**
-     * Analyze a specific device
+     * Analyze a specific device. Kept for individual-device use cases.
+     * Uses existing indexed per-device queries (device_id is part of idx_metrics_device_time).
      */
     public OptimizationResult analyzeDevice(int deviceId) {
-        // Get average metrics for last 24 hours
         NetworkMetric avgMetric = metricDAO.getAverageMetrics(deviceId, 24);
 
         if (avgMetric == null) {
@@ -57,19 +75,11 @@ public class OptimizationService {
             return null;
         }
 
-        // Get peak bandwidth
         double peakBandwidth = metricDAO.getPeakBandwidth(deviceId, 24);
-
-        // Calculate optimization score (0-100)
         int score = calculateOptimizationScore(avgMetric.getBandwidthUsage(), peakBandwidth);
-
-        // Generate recommendation
         String suggestion = generateSuggestion(avgMetric.getBandwidthUsage(), peakBandwidth, score);
-
-        // Calculate recommended bandwidth (with 20% headroom)
         double recommendedBandwidth = peakBandwidth * 1.2;
 
-        // Create result
         OptimizationResult result = new OptimizationResult(
                 deviceId,
                 avgMetric.getBandwidthUsage(),
@@ -78,11 +88,8 @@ public class OptimizationService {
                 suggestion
         );
 
-        // Save to database
-        optimizationDAO.insertResult(result);
-
+        optimizationDAO.insertResult(result); // Single insert — correct for one device
         System.out.println("[OptimizationService] Device " + deviceId + " analyzed. Score: " + score);
-
         return result;
     }
 

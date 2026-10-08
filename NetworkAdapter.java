@@ -443,9 +443,77 @@ public class NetworkAdapter {
     }
 
     /**
+     * Forces a hardware Wi-Fi scan via Windows Native WiFi API (wlanapi.dll).
+     * Uses PowerShell -EncodedCommand to pass the C# script ENTIRELY IN MEMORY
+     * — no temp files written to disk, no disk I/O overhead.
+     */
+    private static void forceWindowsWifiScan() {
+        // Write the C# script in plain text — Java's Base64 encoder handles encoding
+        String script =
+            "$code = @\"\n" +
+            "using System;\n" +
+            "using System.Runtime.InteropServices;\n" +
+            "public class NativeWifiScan {\n" +
+            "    [DllImport(\"Wlanapi.dll\")]\n" +
+            "    public static extern uint WlanOpenHandle(uint dwClientVersion, IntPtr pReserved, out uint pdwNegotiatedVersion, out IntPtr phClientHandle);\n" +
+            "    [DllImport(\"Wlanapi.dll\")]\n" +
+            "    public static extern uint WlanEnumInterfaces(IntPtr hClientHandle, IntPtr pReserved, out IntPtr ppInterfaceList);\n" +
+            "    [DllImport(\"Wlanapi.dll\")]\n" +
+            "    public static extern uint WlanScan(IntPtr hClientHandle, ref Guid pInterfaceGuid, IntPtr pDot11Ssid, IntPtr pIeData, IntPtr pReserved);\n" +
+            "    [DllImport(\"Wlanapi.dll\")]\n" +
+            "    public static extern void WlanFreeMemory(IntPtr pMemory);\n" +
+            "    [DllImport(\"Wlanapi.dll\")]\n" +
+            "    public static extern uint WlanCloseHandle(IntPtr hClientHandle, IntPtr pReserved);\n" +
+            "    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]\n" +
+            "    public struct WLAN_INTERFACE_INFO {\n" +
+            "        public Guid InterfaceGuid;\n" +
+            "        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 256)]\n" +
+            "        public string strInterfaceDescription;\n" +
+            "        public uint isState;\n" +
+            "    }\n" +
+            "    public static void Scan() {\n" +
+            "        uint negotiatedVersion; IntPtr clientHandle;\n" +
+            "        if (WlanOpenHandle(2, IntPtr.Zero, out negotiatedVersion, out clientHandle) != 0) return;\n" +
+            "        IntPtr interfaceListPtr;\n" +
+            "        if (WlanEnumInterfaces(clientHandle, IntPtr.Zero, out interfaceListPtr) == 0) {\n" +
+            "            uint numItems = (uint)Marshal.ReadInt32(interfaceListPtr);\n" +
+            "            IntPtr infoPtr = new IntPtr(interfaceListPtr.ToInt64() + 8);\n" +
+            "            for (int i = 0; i < numItems; i++) {\n" +
+            "                WLAN_INTERFACE_INFO info = (WLAN_INTERFACE_INFO)Marshal.PtrToStructure(infoPtr, typeof(WLAN_INTERFACE_INFO));\n" +
+            "                WlanScan(clientHandle, ref info.InterfaceGuid, IntPtr.Zero, IntPtr.Zero, IntPtr.Zero);\n" +
+            "                infoPtr = new IntPtr(infoPtr.ToInt64() + Marshal.SizeOf(typeof(WLAN_INTERFACE_INFO)));\n" +
+            "            }\n" +
+            "            WlanFreeMemory(interfaceListPtr);\n" +
+            "        }\n" +
+            "        WlanCloseHandle(clientHandle, IntPtr.Zero);\n" +
+            "    }\n" +
+            "}\n" +
+            "\"@\n" +
+            "Add-Type -TypeDefinition $code -Language CSharp\n" +
+            "[NativeWifiScan]::Scan()\n";
+
+        try {
+            // PowerShell -EncodedCommand requires UTF-16LE Base64 — done entirely in memory
+            byte[] scriptBytes = script.getBytes("UTF-16LE");
+            String encodedScript = java.util.Base64.getEncoder().encodeToString(scriptBytes);
+            executeCommandArray(new String[]{
+                "powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass",
+                "-EncodedCommand", encodedScript
+            });
+            // Physical hardware scan requires ~3.5s to populate the Windows OS cache
+            Thread.sleep(3500);
+        } catch (Exception e) {
+            System.err.println("[NetworkAdapter] Error forcing WiFi scan: " + e.getMessage());
+        }
+    }
+
+    /**
      * Scan WiFi networks on Windows using netsh
      */
     private static List<AvailableNetwork> scanWindowsWifi() {
+        // Trigger hardware scan FIRST so netsh returns up-to-date results
+        forceWindowsWifiScan();
+
         List<AvailableNetwork> networks = new ArrayList<>();
 
         try {
