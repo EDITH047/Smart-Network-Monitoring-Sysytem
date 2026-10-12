@@ -40,6 +40,10 @@ public class AuditLogDAO {
         }
     }
 
+    public boolean log(AuditLog log) {
+        return insertLog(log);
+    }
+
     /**
      * Get all audit logs
      */

@@ -189,7 +189,12 @@ public class AlertPanel extends JPanel {
         }
 
         if (newRowToSelect >= 0) {
-            alertTable.setRowSelectionInterval(newRowToSelect, newRowToSelect);
+            try {
+                int viewRow = alertTable.convertRowIndexToView(newRowToSelect);
+                if (viewRow >= 0) {
+                    alertTable.setRowSelectionInterval(viewRow, viewRow);
+                }
+            } catch (Exception ignored) {}
         }
     }
 
@@ -200,8 +205,9 @@ public class AlertPanel extends JPanel {
             return;
         }
 
-        int alertId = (int) tableModel.getValueAt(selectedRow, 0);
-        String status = (String) tableModel.getValueAt(selectedRow, 6);
+        int modelRow = alertTable.convertRowIndexToModel(selectedRow);
+        int alertId = (int) tableModel.getValueAt(modelRow, 0);
+        String status = (String) tableModel.getValueAt(modelRow, 6);
 
         if ("Acknowledged".equals(status)) {
             JOptionPane.showMessageDialog(this, "This alert is already acknowledged.", "Info", JOptionPane.INFORMATION_MESSAGE);

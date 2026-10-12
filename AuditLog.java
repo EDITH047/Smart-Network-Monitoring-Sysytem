@@ -18,6 +18,10 @@ public class AuditLog {
     public AuditLog() {
     }
 
+    public AuditLog(int userId, String action, String details) {
+        this(userId, action, details, "127.0.0.1");
+    }
+
     public AuditLog(int userId, String action, String details, String ipAddress) {
         this.userId = userId;
         this.action = action;

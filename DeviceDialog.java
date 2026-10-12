@@ -129,28 +129,27 @@ public class DeviceDialog extends JDialog {
                            String labelText, Component field, String helpText) {
         // Label
         gbc.gridx = 0;
-        gbc.gridy = row * 2;
-        gbc.weightx = 0;
+        gbc.gridy = row * 3;
+        gbc.weightx = 1.0;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
         gbc.anchor = GridBagConstraints.WEST;
+        gbc.insets = new Insets(6, 0, 2, 0);
 
         JLabel label = new JLabel(labelText);
         label.setFont(new Font("Segoe UI", Font.BOLD, 12));
-        label.setForeground(new Color(15, 23, 42)); // Dark navy - always readable
+        label.setForeground(new Color(15, 23, 42)); // Dark navy
         panel.add(label, gbc);
 
         // Field
-        gbc.gridx = 0;
-        gbc.gridy = row * 2 + 1;
-        gbc.weightx = 1.0;
-        gbc.fill = GridBagConstraints.HORIZONTAL;
-
+        gbc.gridy = row * 3 + 1;
+        gbc.insets = new Insets(0, 0, 2, 0);
         panel.add(field, gbc);
 
         // Help text
         if (helpText != null) {
-            gbc.gridy = row * 2 + 1;
-            JLabel help = new JLabel("<html><small>" + helpText + "</small></html>");
-            help.setForeground(new Color(71, 85, 105)); // Darker muted text
+            gbc.gridy = row * 3 + 2;
+            gbc.insets = new Insets(0, 0, 6, 0);
+            JLabel help = new JLabel("<html><small style='color:#64748B;'>" + helpText + "</small></html>");
             panel.add(help, gbc);
         }
     }

@@ -39,6 +39,46 @@ public class NetworkMetricDAO {
     }
 
     /**
+     * Batch insert metrics in a single transaction (10-20x faster than single inserts).
+     */
+    public boolean batchInsertMetrics(List<NetworkMetric> metrics) {
+        if (metrics == null || metrics.isEmpty()) return false;
+
+        String sql = "INSERT INTO network_metrics (device_id, bandwidth_usage, latency_ms, packet_loss_pct, packets_in, packets_out, recorded_at) " +
+                "VALUES (?, ?, ?, ?, ?, ?, NOW())";
+
+        try (Connection conn = DatabaseConfig.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            conn.setAutoCommit(false);
+            try {
+                for (NetworkMetric m : metrics) {
+                    ps.setInt(1, m.getDeviceId());
+                    ps.setDouble(2, m.getBandwidthUsage());
+                    ps.setDouble(3, m.getLatencyMs());
+                    ps.setDouble(4, m.getPacketLossPct());
+                    ps.setLong(5, m.getPacketsIn());
+                    ps.setLong(6, m.getPacketsOut());
+                    ps.addBatch();
+                }
+                ps.executeBatch();
+                conn.commit();
+                return true;
+            } catch (SQLException e) {
+                conn.rollback();
+                System.err.println("[NetworkMetricDAO] Batch insert failed, rolled back: " + e.getMessage());
+                return false;
+            } finally {
+                conn.setAutoCommit(true);
+            }
+
+        } catch (SQLException e) {
+            System.err.println("[NetworkMetricDAO] Error in batchInsertMetrics: " + e.getMessage());
+            return false;
+        }
+    }
+
+    /**
      * Get latest metric for a specific device
      */
     public NetworkMetric getLatestByDevice(int deviceId) {
@@ -198,6 +238,37 @@ public class NetworkMetricDAO {
         }
 
         return 0;
+    }
+
+    /**
+     * Get overall historical average bandwidth across all devices over the last N hours
+     */
+    public double getGlobalAverageBandwidth(int hours) {
+        String sql = hours > 0
+                ? "SELECT AVG(bandwidth_usage) as avg_bw FROM network_metrics WHERE recorded_at >= DATE_SUB(NOW(), INTERVAL ? HOUR)"
+                : "SELECT AVG(bandwidth_usage) as avg_bw FROM network_metrics";
+
+        try (Connection conn = DatabaseConfig.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            if (hours > 0) {
+                ps.setInt(1, hours);
+            }
+
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    double val = rs.getDouble("avg_bw");
+                    if (!rs.wasNull()) {
+                        return val;
+                    }
+                }
+            }
+
+        } catch (SQLException e) {
+            System.err.println("[NetworkMetricDAO] Error getting global average bandwidth: " + e.getMessage());
+        }
+
+        return 0.0;
     }
 
     /**

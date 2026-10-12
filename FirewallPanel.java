@@ -176,7 +176,8 @@ public class FirewallPanel extends JPanel {
             return;
         }
 
-        int ruleId = (Integer) tableModel.getValueAt(row, COL_ID);
+        int modelRow = rulesTable.convertRowIndexToModel(row);
+        int ruleId = (Integer) tableModel.getValueAt(modelRow, COL_ID);
         // We get it fresh from DB logic inside service/DAO if needed, but for simplicity we instantiate a dummy or fetch it
         // A standard approach using DAO
         com.networkmonitor.dao.FirewallRuleDAO dao = new com.networkmonitor.dao.FirewallRuleDAO();
@@ -306,7 +307,8 @@ public class FirewallPanel extends JPanel {
             return;
         }
 
-        int ruleId = (Integer) tableModel.getValueAt(row, COL_ID);
+        int modelRow = rulesTable.convertRowIndexToModel(row);
+        int ruleId = (Integer) tableModel.getValueAt(modelRow, COL_ID);
         if (firewallService.toggleRuleActive(ruleId)) {
             loadRules();
         } else {
@@ -321,8 +323,9 @@ public class FirewallPanel extends JPanel {
             return;
         }
 
-        int ruleId = (Integer) tableModel.getValueAt(row, COL_ID);
-        String ruleName = (String) tableModel.getValueAt(row, COL_NAME);
+        int modelRow = rulesTable.convertRowIndexToModel(row);
+        int ruleId = (Integer) tableModel.getValueAt(modelRow, COL_ID);
+        String ruleName = (String) tableModel.getValueAt(modelRow, COL_NAME);
 
         int confirm = JOptionPane.showConfirmDialog(this, "Delete firewall rule '" + ruleName + "'?", "Confirm", JOptionPane.YES_NO_OPTION);
         if (confirm == JOptionPane.YES_OPTION) {

@@ -182,8 +182,9 @@ public class UserManagementPanel extends JPanel {
             JOptionPane.showMessageDialog(this, "Select a user to toggle");
             return;
         }
-        int userId = (int) tableModel.getValueAt(row, 0);
-        String currentStatus = (String) tableModel.getValueAt(row, 5);
+        int modelRow = userTable.convertRowIndexToModel(row);
+        int userId = (int) tableModel.getValueAt(modelRow, 0);
+        String currentStatus = (String) tableModel.getValueAt(modelRow, 5);
         boolean isActive = "Active".equals(currentStatus);
         
         userDAO.setUserActive(userId, !isActive);
@@ -196,7 +197,8 @@ public class UserManagementPanel extends JPanel {
             JOptionPane.showMessageDialog(this, "Select a user");
             return;
         }
-        int userId = (int) tableModel.getValueAt(row, 0);
+        int modelRow = userTable.convertRowIndexToModel(row);
+        int userId = (int) tableModel.getValueAt(modelRow, 0);
         String newPass = JOptionPane.showInputDialog(this, "Enter new password:");
         if (newPass != null && !newPass.trim().isEmpty()) {
             userDAO.updatePassword(userId, com.networkmonitor.util.PasswordUtil.hashPassword(newPass));

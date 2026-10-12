@@ -48,6 +48,12 @@ public class MonitoringService {
     private volatile List<NetworkMetric> liveMetricCache = new ArrayList<>();
     private int analysisCounter = 0;
 
+    // Running cumulative bandwidth trackers across all samples over time
+    private final java.util.concurrent.atomic.AtomicLong cumulativeSampleCount = new java.util.concurrent.atomic.AtomicLong(0);
+    private final java.util.concurrent.atomic.DoubleAdder cumulativeBandwidthSum = new java.util.concurrent.atomic.DoubleAdder();
+    private volatile double cachedDbAverageBandwidth = -1.0;
+    private volatile long lastDbAverageQueryTime = 0;
+
     private MonitoringService() {
         this.deviceInterfaceMap = new HashMap<>();
     }
@@ -72,6 +78,14 @@ public class MonitoringService {
 
         // Always update live cache for instant UI reads
         liveMetricCache = collectedMetrics;
+
+        // Accumulate running bandwidth over time for true historical average
+        for (NetworkMetric metric : collectedMetrics) {
+            if (metric != null && metric.getBandwidthUsage() >= 0) {
+                cumulativeBandwidthSum.add(metric.getBandwidthUsage());
+                cumulativeSampleCount.incrementAndGet();
+            }
+        }
 
         // Update device statuses in-memory only
         for (NetworkMetric metric : collectedMetrics) {
@@ -104,13 +118,19 @@ public class MonitoringService {
         List<NetworkMetric> metrics = liveMetricCache;
         if (metrics == null || metrics.isEmpty()) return;
 
-        // 1. Batch insert metrics to DB
-        for (NetworkMetric metric : metrics) {
-            metricDAO.insertMetric(metric);
-        }
+        // 1. High-performance batch insert metrics to DB
+        metricDAO.batchInsertMetrics(metrics);
 
         // 2. Flush ONLY changed device statuses to DB (dirty-tracking)
         deviceCache.flushDirtyStatuses();
+
+        // 3. Refresh 24h DB average bandwidth in background every persistence cycle
+        try {
+            double dbAvg = metricDAO.getGlobalAverageBandwidth(24);
+            if (dbAvg > 0) {
+                cachedDbAverageBandwidth = dbAvg;
+            }
+        } catch (Exception ignored) {}
 
         System.out.println("[MonitoringService] Persisted " + metrics.size() + " metrics [DB WRITE]");
     }
@@ -340,7 +360,45 @@ public class MonitoringService {
         return (onlineDevices * 100.0) / totalDevices;
     }
 
+    /**
+     * Get the TRUE overall historical average bandwidth across all devices over time.
+     * Backed by database 24-hour historical records and running cumulative session metrics.
+     */
     public double getAverageBandwidth() {
+        long now = System.currentTimeMillis();
+        if (now - lastDbAverageQueryTime > 15000) {
+            lastDbAverageQueryTime = now;
+            try {
+                double dbAvg = metricDAO.getGlobalAverageBandwidth(24);
+                if (dbAvg > 0) {
+                    cachedDbAverageBandwidth = dbAvg;
+                }
+            } catch (Exception ignored) {}
+        }
+
+        if (cachedDbAverageBandwidth > 0) {
+            return cachedDbAverageBandwidth;
+        }
+
+        long count = cumulativeSampleCount.get();
+        if (count > 0) {
+            return cumulativeBandwidthSum.sum() / count;
+        }
+
+        return getLiveBandwidth();
+    }
+
+    /**
+     * Get historical average bandwidth from database for a specific duration in hours.
+     */
+    public double getAverageBandwidth(int hours) {
+        return metricDAO.getGlobalAverageBandwidth(hours);
+    }
+
+    /**
+     * Get the instantaneous live average bandwidth across devices right now.
+     */
+    public double getLiveBandwidth() {
         List<NetworkMetric> metrics = liveMetricCache;
         if (metrics == null || metrics.isEmpty()) {
             metrics = metricDAO.getLatestMetrics();
@@ -352,6 +410,20 @@ public class MonitoringService {
             total += metric.getBandwidthUsage();
         }
         return total / metrics.size();
+    }
+
+    /**
+     * Get the instantaneous live total bandwidth across all devices right now.
+     */
+    public double getLiveTotalBandwidth() {
+        List<NetworkMetric> metrics = liveMetricCache;
+        if (metrics == null || metrics.isEmpty()) return 0;
+
+        double total = 0;
+        for (NetworkMetric metric : metrics) {
+            total += metric.getBandwidthUsage();
+        }
+        return total;
     }
 
     public List<Device> getHighBandwidthDevices(double threshold) {
@@ -395,8 +467,8 @@ public class MonitoringService {
             metric.setBandwidthUsage(20 + random.nextDouble() * 70);
             metric.setLatencyMs(10 + random.nextDouble() * 80);
             metric.setPacketLossPct(random.nextDouble() * 2);
-            metric.setPacketsIn(100000 + random.nextLong() % 500000);
-            metric.setPacketsOut(50000 + random.nextLong() % 300000);
+            metric.setPacketsIn(100000 + Math.abs(random.nextLong() % 500000));
+            metric.setPacketsOut(50000 + Math.abs(random.nextLong() % 300000));
         } else {
             metric.setBandwidthUsage(0);
             metric.setLatencyMs(9999);

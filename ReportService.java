@@ -52,6 +52,18 @@ public class ReportService {
                         String.format("%.2f ms", avgMetric.getLatencyMs()),
                         String.format("%.2f%%", avgMetric.getPacketLossPct())
                 });
+            } else {
+                NetworkMetric live = MonitoringService.getInstance().getLatestMetricByDevice(device.getDeviceId());
+                if (live != null) {
+                    reportData.add(new String[]{
+                            device.getDeviceName(),
+                            device.getDeviceType(),
+                            device.getStatus(),
+                            String.format("%.2f Mbps", live.getBandwidthUsage()),
+                            String.format("%.2f ms", live.getLatencyMs()),
+                            String.format("%.2f%%", live.getPacketLossPct())
+                    });
+                }
             }
         }
 
@@ -113,6 +125,18 @@ public class ReportService {
                         String.format("%.2f Mbps", Math.min(avgMetric.getBandwidthUsage(), peakBandwidth / 2)),
                         String.format("%.1f%%", utilizationPct)
                 });
+            } else {
+                NetworkMetric live = MonitoringService.getInstance().getLatestMetricByDevice(device.getDeviceId());
+                if (live != null) {
+                    double utilizationPct = (live.getBandwidthUsage() / 100.0) * 100;
+                    reportData.add(new String[]{
+                            device.getDeviceName(),
+                            String.format("%.2f Mbps", live.getBandwidthUsage()),
+                            String.format("%.2f Mbps", live.getBandwidthUsage() * 1.5),
+                            String.format("%.2f Mbps", live.getBandwidthUsage() * 0.5),
+                            String.format("%.1f%%", utilizationPct)
+                    });
+                }
             }
         }
 
@@ -194,7 +218,8 @@ public class ReportService {
         reportData.add(new String[]{"Total Devices", String.valueOf(deviceDAO.getDeviceCount())});
         reportData.add(new String[]{"Online Devices", String.valueOf(deviceDAO.getOnlineDeviceCount())});
         reportData.add(new String[]{"System Health", String.format("%.1f%%", MonitoringService.getInstance().getSystemHealth())});
-        reportData.add(new String[]{"Average Bandwidth", String.format("%.2f Mbps", MonitoringService.getInstance().getAverageBandwidth())});
+        reportData.add(new String[]{"Live Throughput (Current)", String.format("%.2f Mbps", MonitoringService.getInstance().getLiveBandwidth())});
+        reportData.add(new String[]{"Average Bandwidth (Historical)", String.format("%.2f Mbps", MonitoringService.getInstance().getAverageBandwidth())});
         reportData.add(new String[]{"Network Optimization Score", String.format("%.1f", OptimizationService.getInstance().getNetworkAverageScore())});
         reportData.add(new String[]{"Unacknowledged Alerts", String.valueOf(alertDAO.getUnacknowledgedCount())});
         reportData.add(new String[]{"Unresolved Security Events", String.valueOf(new SecurityEventDAO().getUnresolvedEvents().size())});

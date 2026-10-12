@@ -1,9 +1,15 @@
 package com.networkmonitor.service;
 
+import com.networkmonitor.dao.AuditLogDAO;
+import com.networkmonitor.dao.FirewallRuleDAO;
 import com.networkmonitor.dao.NetworkMetricDAO;
 import com.networkmonitor.dao.OptimizationDAO;
+import com.networkmonitor.model.AuditLog;
+import com.networkmonitor.model.Device;
+import com.networkmonitor.model.FirewallRule;
 import com.networkmonitor.model.NetworkMetric;
 import com.networkmonitor.model.OptimizationResult;
+import com.networkmonitor.model.User;
 import java.sql.Timestamp;
 import java.util.List;
 import java.util.ArrayList;
@@ -17,6 +23,8 @@ public class OptimizationService {
     private static final OptimizationService instance = new OptimizationService();
     private OptimizationDAO optimizationDAO = new OptimizationDAO();
     private NetworkMetricDAO metricDAO = new NetworkMetricDAO();
+    private FirewallRuleDAO firewallRuleDAO = new FirewallRuleDAO();
+    private AuditLogDAO auditLogDAO = new AuditLogDAO();
 
     private OptimizationService() {
     }
@@ -172,5 +180,34 @@ public class OptimizationService {
      */
     public double getNetworkAverageScore() {
         return optimizationDAO.getAverageScore();
+    }
+
+    /**
+     * Applies an automatic QoS policy or Firewall rate-limit/block rule for a given device recommendation
+     */
+    public boolean applyQoSRule(int deviceId, String policyType, User user) {
+        Device dev = DeviceCache.getInstance().getDeviceById(deviceId);
+        if (dev == null) return false;
+
+        FirewallRule rule = new FirewallRule();
+        rule.setRuleName("QoS-" + policyType + "-" + dev.getDeviceName());
+        rule.setSourceIp(dev.getIpAddress());
+        rule.setDestinationIp("*");
+        rule.setPort(-1);
+        rule.setProtocol("ALL");
+        rule.setAction("RATE_LIMIT".equalsIgnoreCase(policyType) ? "ALLOW" : "DROP");
+        rule.setIsActive(true);
+        rule.setCreatedBy(user != null ? user.getUserId() : 1);
+
+        if (firewallRuleDAO.addRule(rule)) {
+            FirewallService.getInstance().reloadRules();
+            auditLogDAO.log(new AuditLog(
+                user != null ? user.getUserId() : 1,
+                "QOS_ENFORCEMENT",
+                String.format("Applied %s policy to device %s (%s)", policyType, dev.getDeviceName(), dev.getIpAddress())
+            ));
+            return true;
+        }
+        return false;
     }
 }

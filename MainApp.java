@@ -21,11 +21,8 @@ public class MainApp {
         // Set system properties
         System.setProperty("java.awt.headless", "false");
         
-        try {
-            UIManager.setLookAndFeel(new com.formdev.flatlaf.FlatLightLaf());
-        } catch (Exception ex) {
-            System.err.println("Failed to initialize FlatLaf");
-        }
+        // Initialize theme with user's persisted preference (Dark or Light)
+        com.networkmonitor.util.UITheme.initTheme();
         
         // Auto-start MySQL if it is not currently running
         startMySQLIfNecessary();
@@ -90,8 +87,6 @@ public class MainApp {
         // Launch on EDT (Event Dispatch Thread)
         SwingUtilities.invokeLater(() -> {
             try {
-                // Set system look and feel
-                UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
 
                 // Display splash screen info
                 System.out.println("================================================================================");
@@ -210,6 +205,7 @@ public class MainApp {
         try (Connection conn = DatabaseConfig.getConnection();
              Statement st = conn.createStatement()) {
 
+            // 1. Users
             st.execute("CREATE TABLE IF NOT EXISTS users (" +
                     "user_id INT AUTO_INCREMENT PRIMARY KEY, " +
                     "username VARCHAR(50) NOT NULL UNIQUE, " +
@@ -221,6 +217,98 @@ public class MainApp {
                     "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, " +
                     "last_login TIMESTAMP NULL)");
 
+            // 2. Devices
+            st.execute("CREATE TABLE IF NOT EXISTS devices (" +
+                    "device_id INT AUTO_INCREMENT PRIMARY KEY, " +
+                    "device_name VARCHAR(100) NOT NULL, " +
+                    "ip_address VARCHAR(45) NOT NULL, " +
+                    "mac_address VARCHAR(17), " +
+                    "device_type VARCHAR(50) NOT NULL, " +
+                    "location VARCHAR(100), " +
+                    "status ENUM('ONLINE', 'OFFLINE', 'WARNING', 'CRITICAL') DEFAULT 'OFFLINE', " +
+                    "network_interface VARCHAR(50), " +
+                    "description TEXT, " +
+                    "last_seen TIMESTAMP NULL, " +
+                    "added_by INT, " +
+                    "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, " +
+                    "FOREIGN KEY (added_by) REFERENCES users(user_id) ON DELETE SET NULL)");
+
+            // 3. Network Metrics
+            st.execute("CREATE TABLE IF NOT EXISTS network_metrics (" +
+                    "metric_id INT AUTO_INCREMENT PRIMARY KEY, " +
+                    "device_id INT NOT NULL, " +
+                    "bandwidth_usage DOUBLE DEFAULT 0, " +
+                    "latency_ms DOUBLE DEFAULT 0, " +
+                    "packet_loss_pct DOUBLE DEFAULT 0, " +
+                    "packets_in BIGINT DEFAULT 0, " +
+                    "packets_out BIGINT DEFAULT 0, " +
+                    "recorded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, " +
+                    "FOREIGN KEY (device_id) REFERENCES devices(device_id) ON DELETE CASCADE)");
+
+            // 4. Security Events
+            st.execute("CREATE TABLE IF NOT EXISTS security_events (" +
+                    "event_id INT AUTO_INCREMENT PRIMARY KEY, " +
+                    "device_id INT NOT NULL, " +
+                    "event_type ENUM('DDOS', 'BRUTE_FORCE', 'PORT_SCAN', 'MALWARE', 'UNAUTHORIZED_ACCESS') NOT NULL, " +
+                    "severity ENUM('LOW', 'MEDIUM', 'HIGH', 'CRITICAL') NOT NULL, " +
+                    "source_ip VARCHAR(45), " +
+                    "description TEXT, " +
+                    "is_resolved BOOLEAN DEFAULT FALSE, " +
+                    "detected_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, " +
+                    "resolved_at TIMESTAMP NULL, " +
+                    "FOREIGN KEY (device_id) REFERENCES devices(device_id) ON DELETE CASCADE)");
+
+            // 5. Firewall Rules
+            st.execute("CREATE TABLE IF NOT EXISTS firewall_rules (" +
+                    "rule_id INT AUTO_INCREMENT PRIMARY KEY, " +
+                    "rule_name VARCHAR(100) NOT NULL, " +
+                    "source_ip VARCHAR(45), " +
+                    "dest_ip VARCHAR(45), " +
+                    "port INT, " +
+                    "protocol ENUM('TCP', 'UDP', 'ICMP', 'ALL') DEFAULT 'ALL', " +
+                    "action ENUM('ALLOW', 'BLOCK', 'RATE_LIMIT') NOT NULL, " +
+                    "priority INT DEFAULT 100, " +
+                    "is_active BOOLEAN DEFAULT TRUE, " +
+                    "created_by INT, " +
+                    "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, " +
+                    "FOREIGN KEY (created_by) REFERENCES users(user_id) ON DELETE SET NULL)");
+
+            // 6. Alerts
+            st.execute("CREATE TABLE IF NOT EXISTS alerts (" +
+                    "alert_id INT AUTO_INCREMENT PRIMARY KEY, " +
+                    "device_id INT NOT NULL, " +
+                    "alert_type VARCHAR(50) NOT NULL, " +
+                    "severity ENUM('INFO', 'WARNING', 'CRITICAL') NOT NULL, " +
+                    "message TEXT NOT NULL, " +
+                    "is_acknowledged BOOLEAN DEFAULT FALSE, " +
+                    "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, " +
+                    "acknowledged_by INT NULL, " +
+                    "FOREIGN KEY (device_id) REFERENCES devices(device_id) ON DELETE CASCADE, " +
+                    "FOREIGN KEY (acknowledged_by) REFERENCES users(user_id) ON DELETE SET NULL)");
+
+            // 7. Optimization Results
+            st.execute("CREATE TABLE IF NOT EXISTS optimization_results (" +
+                    "result_id INT AUTO_INCREMENT PRIMARY KEY, " +
+                    "device_id INT NOT NULL, " +
+                    "current_bandwidth DOUBLE, " +
+                    "recommended_bandwidth DOUBLE, " +
+                    "optimization_score INT, " +
+                    "suggestion TEXT, " +
+                    "analyzed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, " +
+                    "FOREIGN KEY (device_id) REFERENCES devices(device_id) ON DELETE CASCADE)");
+
+            // 8. Blocked IPs
+            st.execute("CREATE TABLE IF NOT EXISTS blocked_ips (" +
+                    "block_id INT AUTO_INCREMENT PRIMARY KEY, " +
+                    "ip_address VARCHAR(45) NOT NULL, " +
+                    "reason VARCHAR(255), " +
+                    "blocked_by INT, " +
+                    "blocked_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, " +
+                    "expires_at TIMESTAMP NULL, " +
+                    "is_permanent BOOLEAN DEFAULT FALSE, " +
+                    "FOREIGN KEY (blocked_by) REFERENCES users(user_id) ON DELETE SET NULL)");
+
+            // 9. Audit Log
             st.execute("CREATE TABLE IF NOT EXISTS audit_log (" +
                     "log_id INT AUTO_INCREMENT PRIMARY KEY, " +
                     "user_id INT, " +

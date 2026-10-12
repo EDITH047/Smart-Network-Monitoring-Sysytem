@@ -213,7 +213,8 @@ public class SecurityPanel extends JPanel {
             return;
         }
 
-        int eventId = (Integer) eventsTableModel.getValueAt(row, EVENT_COL_ID);
+        int modelRow = eventsTable.convertRowIndexToModel(row);
+        int eventId = (Integer) eventsTableModel.getValueAt(modelRow, EVENT_COL_ID);
         if (securityService.resolveEvent(eventId)) {
             loadData();
             JOptionPane.showMessageDialog(this, "Threat marked as resolved.", "Success", JOptionPane.INFORMATION_MESSAGE);
@@ -246,7 +247,8 @@ public class SecurityPanel extends JPanel {
             return;
         }
 
-        String ip = (String) blockedIpTableModel.getValueAt(row, IP_COL_ADDRESS);
+        int modelRow = blockedIpTable.convertRowIndexToModel(row);
+        String ip = (String) blockedIpTableModel.getValueAt(modelRow, IP_COL_ADDRESS);
         if (securityService.unblockIP(ip)) {
             loadData();
             JOptionPane.showMessageDialog(this, "IP Unblocked.", "Success", JOptionPane.INFORMATION_MESSAGE);
@@ -278,7 +280,7 @@ public class SecurityPanel extends JPanel {
             } else if ("HIGH".equals(severity)) {
                 if (!isSelected) setForeground(UITheme.WARNING_ORANGE);
             } else if ("MEDIUM".equals(severity)) {
-                if (!isSelected) setForeground(new Color(234, 88, 12));
+                if (!isSelected) setForeground(UITheme.WARNING_ORANGE);
             } else {
                 if (!isSelected) setForeground(UITheme.TEXT_MUTED);
             }

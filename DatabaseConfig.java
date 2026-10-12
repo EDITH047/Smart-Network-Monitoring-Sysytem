@@ -45,13 +45,24 @@ public class DatabaseConfig {
         ConnectionPool currentPool = getPool();
         Connection realConnection = currentPool.getConnection();
         
+        java.util.concurrent.atomic.AtomicBoolean closed = new java.util.concurrent.atomic.AtomicBoolean(false);
+
         return (Connection) Proxy.newProxyInstance(
             Connection.class.getClassLoader(),
             new Class[]{Connection.class},
             (proxy, method, args) -> {
-                if ("close".equals(method.getName())) {
-                    currentPool.releaseConnection(realConnection);
+                String methodName = method.getName();
+                if ("close".equals(methodName)) {
+                    if (closed.compareAndSet(false, true)) {
+                        currentPool.releaseConnection(realConnection);
+                    }
                     return null;
+                }
+                if ("isClosed".equals(methodName)) {
+                    return closed.get() || realConnection.isClosed();
+                }
+                if (closed.get()) {
+                    throw new SQLException("Connection is closed");
                 }
                 try {
                     return method.invoke(realConnection, args);

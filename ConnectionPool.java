@@ -30,20 +30,37 @@ public class ConnectionPool {
     }
 
     public synchronized Connection getConnection() throws SQLException {
-        if (connectionPool.isEmpty()) {
-            if (usedConnections.size() < MAX_POOL_SIZE) {
-                connectionPool.add(createConnection());
-            } else {
-                throw new RuntimeException("Maximum pool size reached, no available connections!");
+        long startTime = System.currentTimeMillis();
+        long maxWaitMs = 10000; // Wait up to 10 seconds for an available connection
+
+        while (connectionPool.isEmpty() && usedConnections.size() >= MAX_POOL_SIZE) {
+            long elapsed = System.currentTimeMillis() - startTime;
+            if (elapsed >= maxWaitMs) {
+                throw new SQLException("Connection pool exhausted: timed out after " + maxWaitMs + "ms waiting for an available connection.");
+            }
+            try {
+                wait(Math.min(1000, maxWaitMs - elapsed));
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new SQLException("Thread interrupted while waiting for database connection", e);
             }
         }
 
-        Connection connection = connectionPool.remove(connectionPool.size() - 1);
-        
-        if (!connection.isValid(2)) {
+        Connection connection;
+        if (!connectionPool.isEmpty()) {
+            connection = connectionPool.remove(connectionPool.size() - 1);
+        } else {
             connection = createConnection();
         }
-        
+
+        try {
+            if (connection == null || connection.isClosed() || !connection.isValid(2)) {
+                connection = createConnection();
+            }
+        } catch (Exception e) {
+            connection = createConnection();
+        }
+
         usedConnections.add(connection);
         return connection;
     }
@@ -51,20 +68,42 @@ public class ConnectionPool {
     public synchronized boolean releaseConnection(Connection connection) {
         if (connection != null) {
             usedConnections.remove(connection);
-            connectionPool.add(connection);
+            try {
+                if (!connection.isClosed()) {
+                    if (!connection.getAutoCommit()) {
+                        connection.setAutoCommit(true);
+                    }
+                    if (!connectionPool.contains(connection)) {
+                        connectionPool.add(connection);
+                    }
+                }
+            } catch (SQLException e) {
+                // If checking or resetting connection fails, do not return to pool
+                try { connection.close(); } catch (Exception ignored) {}
+            }
+            notifyAll();
             return true;
         }
         return false;
     }
 
+    public synchronized int getPoolSize() {
+        return connectionPool.size();
+    }
+
+    public synchronized int getUsedConnectionCount() {
+        return usedConnections.size();
+    }
+
     public synchronized void shutdown() throws SQLException {
         for (Connection c : connectionPool) {
-            c.close();
+            try { if (c != null && !c.isClosed()) c.close(); } catch (Exception ignored) {}
         }
         for (Connection c : usedConnections) {
-            c.close();
+            try { if (c != null && !c.isClosed()) c.close(); } catch (Exception ignored) {}
         }
         connectionPool.clear();
         usedConnections.clear();
+        notifyAll();
     }
 }

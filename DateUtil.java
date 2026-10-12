@@ -14,9 +14,12 @@ import java.util.Date;
  */
 public class DateUtil {
 
-    private static final SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("yyyy-MM-dd");
-    private static final SimpleDateFormat DATETIME_FORMAT = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-    private static final SimpleDateFormat TIME_FORMAT = new SimpleDateFormat("HH:mm:ss");
+    private static final ThreadLocal<SimpleDateFormat> DATE_FORMAT =
+            ThreadLocal.withInitial(() -> new SimpleDateFormat("yyyy-MM-dd"));
+    private static final ThreadLocal<SimpleDateFormat> DATETIME_FORMAT =
+            ThreadLocal.withInitial(() -> new SimpleDateFormat("yyyy-MM-dd HH:mm:ss"));
+    private static final ThreadLocal<SimpleDateFormat> TIME_FORMAT =
+            ThreadLocal.withInitial(() -> new SimpleDateFormat("HH:mm:ss"));
 
     /**
      * Format a Timestamp to date string (yyyy-MM-dd)
@@ -28,7 +31,7 @@ public class DateUtil {
         if (timestamp == null) {
             return "-";
         }
-        return DATE_FORMAT.format(new Date(timestamp.getTime()));
+        return DATE_FORMAT.get().format(new Date(timestamp.getTime()));
     }
 
     /**
@@ -41,7 +44,7 @@ public class DateUtil {
         if (timestamp == null) {
             return "-";
         }
-        return DATETIME_FORMAT.format(new Date(timestamp.getTime()));
+        return DATETIME_FORMAT.get().format(new Date(timestamp.getTime()));
     }
 
     /**
@@ -54,7 +57,7 @@ public class DateUtil {
         if (timestamp == null) {
             return "-";
         }
-        return TIME_FORMAT.format(new Date(timestamp.getTime()));
+        return TIME_FORMAT.get().format(new Date(timestamp.getTime()));
     }
 
     /**
@@ -110,7 +113,7 @@ public class DateUtil {
      */
     public static Timestamp parseDate(String dateStr) {
         try {
-            Date date = DATE_FORMAT.parse(dateStr);
+            Date date = DATE_FORMAT.get().parse(dateStr);
             return new Timestamp(date.getTime());
         } catch (Exception e) {
             System.err.println("[DateUtil] Error parsing date: " + e.getMessage());

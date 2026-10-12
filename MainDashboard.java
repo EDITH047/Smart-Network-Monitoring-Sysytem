@@ -1,5 +1,6 @@
 package com.networkmonitor.ui;
 
+import com.networkmonitor.model.Alert;
 import com.networkmonitor.model.User;
 import com.networkmonitor.service.AlertService;
 import com.networkmonitor.service.AuthService;
@@ -9,6 +10,8 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * MainDashboard - Main application window with tabbed interface and high-contrast UI
@@ -21,6 +24,7 @@ public class MainDashboard extends JFrame {
     private JLabel alertBadgeLabel;
     private JLabel userInfoLabel;
     private Timer alertRefreshTimer;
+    private int lastAlertCount = 0;
 
     // UI Panels
     private DevicePanel devicePanel;
@@ -46,6 +50,7 @@ public class MainDashboard extends JFrame {
         setTitle("Smart Network Monitor — " + currentUser.getFullName() + " (" + currentUser.getRole() + ")");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setSize(1380, 820);
+        setMinimumSize(new Dimension(1150, 720));
         setLocationRelativeTo(null);
 
         JPanel mainPanel = new JPanel(new BorderLayout());
@@ -93,15 +98,23 @@ public class MainDashboard extends JFrame {
         JPanel centerPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 0, 0));
         centerPanel.setOpaque(false);
 
-        alertBadgeLabel = new JLabel("🔔 Alerts: 0");
+        alertBadgeLabel = new JLabel("🔔 Alerts: 0 Active");
         alertBadgeLabel.setFont(UITheme.FONT_BODY_BOLD);
-        alertBadgeLabel.setForeground(UITheme.WARNING_ORANGE);
+        alertBadgeLabel.setForeground(new Color(203, 213, 225));
         alertBadgeLabel.setOpaque(true);
+        alertBadgeLabel.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        alertBadgeLabel.setToolTipText("Click to open Quick Notification Center");
         alertBadgeLabel.setBackground(new Color(30, 41, 59)); // Dark slate pill
         alertBadgeLabel.setBorder(BorderFactory.createCompoundBorder(
-            BorderFactory.createLineBorder(UITheme.WARNING_ORANGE, 1, true),
+            BorderFactory.createLineBorder(new Color(51, 65, 85), 1, true),
             BorderFactory.createEmptyBorder(4, 12, 4, 12)
         ));
+        alertBadgeLabel.addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override
+            public void mouseClicked(java.awt.event.MouseEvent e) {
+                showQuickAlertDrawer(alertBadgeLabel);
+            }
+        });
         centerPanel.add(alertBadgeLabel);
         headerPanel.add(centerPanel, BorderLayout.CENTER);
 
@@ -113,6 +126,23 @@ public class MainDashboard extends JFrame {
         userInfoLabel.setFont(UITheme.FONT_BODY);
         userInfoLabel.setForeground(UITheme.TEXT_LIGHT);
         rightPanel.add(userInfoLabel);
+
+        JButton themeBtn = new JButton(UITheme.isDarkMode() ? "☀️ Light" : "🌙 Dark");
+        themeBtn.setFont(new Font("Segoe UI", Font.PLAIN, 11));
+        themeBtn.setToolTipText("Toggle Dark / Light Theme");
+        themeBtn.setFocusPainted(false);
+        themeBtn.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        themeBtn.setBackground(new Color(30, 41, 59));
+        themeBtn.setForeground(new Color(203, 213, 225));
+        themeBtn.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(new Color(51, 65, 85), 1, true),
+            BorderFactory.createEmptyBorder(6, 12, 6, 12)
+        ));
+        themeBtn.addActionListener(e -> {
+            UITheme.toggleTheme(this);
+            themeBtn.setText(UITheme.isDarkMode() ? "☀️ Light" : "🌙 Dark");
+        });
+        rightPanel.add(themeBtn);
 
         JButton logoutButton = new JButton("Sign Out");
         UITheme.styleDangerButton(logoutButton);
@@ -196,28 +226,97 @@ public class MainDashboard extends JFrame {
     }
 
     private void updateAlertBadge() {
-        try {
-            AlertService alertService = AlertService.getInstance();
-            int count = alertService.getUnacknowledgedCount();
-
+        CompletableFuture.supplyAsync(() -> {
+            try {
+                return AlertService.getInstance().getUnacknowledgedCount();
+            } catch (Exception e) {
+                return -1;
+            }
+        }).thenAccept(count -> {
+            if (count < 0) return;
             SwingUtilities.invokeLater(() -> {
+                if (count > lastAlertCount && lastAlertCount >= 0 && count > 0) {
+                    // Audible chime for new alerts
+                    try { Toolkit.getDefaultToolkit().beep(); } catch (Exception ignored) {}
+                }
+                lastAlertCount = count;
+
                 if (count == 0) {
                     alertBadgeLabel.setText("🔔 Alerts: 0 Active");
-                    alertBadgeLabel.setForeground(UITheme.TEXT_MUTED);
+                    alertBadgeLabel.setBackground(new Color(30, 41, 59));
+                    alertBadgeLabel.setForeground(new Color(203, 213, 225));
                     alertBadgeLabel.setBorder(BorderFactory.createCompoundBorder(
-                        BorderFactory.createLineBorder(UITheme.BORDER_DARK, 1, true),
+                        BorderFactory.createLineBorder(new Color(51, 65, 85), 1, true),
                         BorderFactory.createEmptyBorder(4, 12, 4, 12)
                     ));
                 } else {
-                    alertBadgeLabel.setText("🔔 " + count + " Unresolved Alerts (Check Alerts Tab)");
-                    alertBadgeLabel.setForeground(UITheme.DANGER_RED);
+                    alertBadgeLabel.setText("🔔 " + count + " Unresolved Alerts (Click for Center)");
+                    alertBadgeLabel.setBackground(new Color(127, 29, 29));
+                    alertBadgeLabel.setForeground(new Color(254, 202, 202));
                     alertBadgeLabel.setBorder(BorderFactory.createCompoundBorder(
-                        BorderFactory.createLineBorder(UITheme.DANGER_RED, 1, true),
+                        BorderFactory.createLineBorder(new Color(239, 68, 68), 1, true),
                         BorderFactory.createEmptyBorder(4, 12, 4, 12)
                     ));
                 }
             });
-        } catch (Exception ignored) {}
+        });
+    }
+
+    private void showQuickAlertDrawer(Component invoker) {
+        JPopupMenu drawer = new JPopupMenu();
+        drawer.setBorder(BorderFactory.createLineBorder(UITheme.BORDER_LIGHT, 1));
+
+        JMenuItem header = new JMenuItem("🔔 Notification Center & Quick Triage");
+        header.setFont(UITheme.FONT_BODY_BOLD);
+        header.setEnabled(false);
+        drawer.add(header);
+        drawer.addSeparator();
+
+        List<Alert> unack = AlertService.getInstance().getUnacknowledgedAlerts();
+        if (unack == null || unack.isEmpty()) {
+            JMenuItem empty = new JMenuItem("✓ All alerts acknowledged. Network clear!");
+            empty.setFont(UITheme.FONT_SMALL);
+            empty.setEnabled(false);
+            drawer.add(empty);
+        } else {
+            int displayCount = Math.min(5, unack.size());
+            for (int i = 0; i < displayCount; i++) {
+                Alert a = unack.get(i);
+                String prefix = "CRITICAL".equalsIgnoreCase(a.getSeverity()) ? "🔴 " : ("HIGH".equalsIgnoreCase(a.getSeverity()) ? "🟠 " : "🟡 ");
+                JMenuItem item = new JMenuItem(prefix + a.getMessage());
+                item.setFont(UITheme.FONT_SMALL);
+                drawer.add(item);
+            }
+            if (unack.size() > 5) {
+                JMenuItem more = new JMenuItem(String.format("... and %d more alerts", unack.size() - 5));
+                more.setFont(UITheme.FONT_SMALL);
+                more.setEnabled(false);
+                drawer.add(more);
+            }
+
+            drawer.addSeparator();
+            JMenuItem ackAll = new JMenuItem("✓ Acknowledge All Alerts (" + unack.size() + ")");
+            ackAll.setFont(UITheme.FONT_SMALL_BOLD);
+            ackAll.setForeground(UITheme.SUCCESS_GREEN);
+            ackAll.addActionListener(e -> {
+                for (Alert a : unack) {
+                    AlertService.getInstance().acknowledgeAlert(a.getAlertId(), currentUser.getUserId());
+                }
+                updateAlertBadge();
+                if (alertPanel != null) {
+                    tabbedPane.setSelectedComponent(alertPanel);
+                }
+            });
+            drawer.add(ackAll);
+        }
+
+        drawer.addSeparator();
+        JMenuItem viewTab = new JMenuItem("📑 Open Full Alerts Dashboard");
+        viewTab.setFont(UITheme.FONT_SMALL_BOLD);
+        viewTab.addActionListener(e -> tabbedPane.setSelectedComponent(alertPanel));
+        drawer.add(viewTab);
+
+        drawer.show(invoker, 0, invoker.getHeight() + 4);
     }
 
     private void handleLogout() {

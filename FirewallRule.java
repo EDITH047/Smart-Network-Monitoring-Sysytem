@@ -85,6 +85,10 @@ public class FirewallRule {
         this.destIp = destIp;
     }
 
+    public void setDestinationIp(String destIp) {
+        this.destIp = destIp;
+    }
+
     public int getPort() {
         return port;
     }
@@ -123,6 +127,10 @@ public class FirewallRule {
 
     public void setActive(boolean active) {
         isActive = active;
+    }
+
+    public void setIsActive(boolean active) {
+        this.isActive = active;
     }
 
     public int getCreatedBy() {

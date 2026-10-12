@@ -10,7 +10,10 @@ import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class AuditLogPanel extends JPanel {
     private User currentUser;
@@ -79,28 +82,47 @@ public class AuditLogPanel extends JPanel {
         add(centerPanel, BorderLayout.CENTER);
     }
     
+    private static class LogDisplayItem {
+        final AuditLog log;
+        final String username;
+        LogDisplayItem(AuditLog log, String username) {
+            this.log = log;
+            this.username = username;
+        }
+    }
+
     private void loadLogs() {
         tableModel.setRowCount(0);
-        new SwingWorker<List<AuditLog>, Void>() {
+        new SwingWorker<List<LogDisplayItem>, Void>() {
             @Override
-            protected List<AuditLog> doInBackground() {
-                return auditLogDAO.getAllLogs();
+            protected List<LogDisplayItem> doInBackground() {
+                List<AuditLog> logs = auditLogDAO.getAllLogs();
+                Map<Integer, String> userCache = new HashMap<>();
+                List<LogDisplayItem> items = new ArrayList<>(logs.size());
+                for (AuditLog log : logs) {
+                    int uid = log.getUserId();
+                    String userStr = userCache.computeIfAbsent(uid, id -> {
+                        User u = userDAO.findById(id);
+                        return (u != null) ? u.getUsername() : "System/Unknown";
+                    });
+                    items.add(new LogDisplayItem(log, userStr));
+                }
+                return items;
             }
             @Override
             protected void done() {
                 try {
-                    List<AuditLog> logs = get();
+                    List<LogDisplayItem> items = get();
                     SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
                     
-                    if (logs.isEmpty()) {
+                    if (items.isEmpty()) {
                         tableModel.addRow(new Object[]{"", "", "No logs found.", "", "", ""});
                     } else {
-                        for (AuditLog log : logs) {
-                            User u = userDAO.findById(log.getUserId());
-                            String userStr = (u != null) ? u.getUsername() : "System/Unknown";
+                        for (LogDisplayItem item : items) {
+                            AuditLog log = item.log;
                             tableModel.addRow(new Object[]{
                                 log.getLogId(),
-                                userStr,
+                                item.username,
                                 log.getAction(),
                                 log.getDetails(),
                                 log.getIpAddress(),

@@ -2,6 +2,7 @@ package com.networkmonitor.service;
 
 import com.networkmonitor.dao.BlockedIPDAO;
 import com.networkmonitor.dao.SecurityEventDAO;
+import com.networkmonitor.model.Device;
 import com.networkmonitor.model.NetworkMetric;
 import com.networkmonitor.model.SecurityEvent;
 import java.util.List;
@@ -33,26 +34,28 @@ public class SecurityService {
      */
     public SecurityEvent analyze(NetworkMetric metric) {
         SecurityEvent event = null;
+        Device targetDevice = DeviceCache.getInstance().getDeviceById(metric.getDeviceId());
+        String deviceIp = (targetDevice != null && targetDevice.getIpAddress() != null) ? targetDevice.getIpAddress() : "Unknown";
 
         // Check for DDoS (high packet rate)
         if (metric.getPacketsIn() > PACKETS_PER_SEC_THRESHOLD) {
             event = new SecurityEvent(metric.getDeviceId(), "DDOS", "CRITICAL",
-                    "Unknown", "Detected unusually high packet rate: " + metric.getPacketsIn() + " packets/sec");
-            System.out.println("[SecurityService] DDOS detected on device: " + metric.getDeviceId());
+                    deviceIp, "Detected unusually high packet rate: " + metric.getPacketsIn() + " packets/sec");
+            System.out.println("[SecurityService] DDOS detected on device: " + metric.getDeviceId() + " (" + deviceIp + ")");
         }
 
         // Check for brute force (high latency + packet loss)
         else if (metric.getLatencyMs() > LATENCY_SPIKE_THRESHOLD && metric.getPacketLossPct() > 3) {
             event = new SecurityEvent(metric.getDeviceId(), "BRUTE_FORCE", "HIGH",
-                    "Unknown", "Suspected brute force attack - high latency and packet loss");
-            System.out.println("[SecurityService] Brute force suspected on device: " + metric.getDeviceId());
+                    deviceIp, "Suspected brute force attack - high latency and packet loss");
+            System.out.println("[SecurityService] Brute force suspected on device: " + metric.getDeviceId() + " (" + deviceIp + ")");
         }
 
         // Check for port scan (packet loss spike)
         else if (metric.getPacketLossPct() > PACKET_LOSS_THRESHOLD) {
             event = new SecurityEvent(metric.getDeviceId(), "PORT_SCAN", "MEDIUM",
-                    "Unknown", "Possible port scan detected - high packet loss");
-            System.out.println("[SecurityService] Port scan suspected on device: " + metric.getDeviceId());
+                    deviceIp, "Possible port scan detected - high packet loss");
+            System.out.println("[SecurityService] Port scan suspected on device: " + metric.getDeviceId() + " (" + deviceIp + ")");
         }
 
         // Log event and auto-block if critical
@@ -61,12 +64,13 @@ public class SecurityService {
 
             // Auto-block for critical threats
             if ("CRITICAL".equals(event.getSeverity())) {
-                blockedIPDAO.blockIPWithExpiry("0.0.0.0", "Auto-blocked: " + event.getEventType(), 1, 24);
+                String ipToBlock = !"Unknown".equals(deviceIp) ? deviceIp : "0.0.0.0";
+                blockedIPDAO.blockIPWithExpiry(ipToBlock, "Auto-blocked: " + event.getEventType(), 1, 24);
 
                 // Trigger alert
                 AlertService alertService = AlertService.getInstance();
                 alertService.createAlert(metric.getDeviceId(), "SECURITY_THREAT",
-                        "CRITICAL", "Critical threat detected: " + event.getEventType());
+                        "CRITICAL", "Critical threat detected on " + deviceIp + ": " + event.getEventType());
             }
 
             return event;

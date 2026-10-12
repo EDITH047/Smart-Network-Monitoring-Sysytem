@@ -14,15 +14,28 @@ public class NotificationService {
         if (SystemTray.isSupported()) {
             try {
                 SystemTray tray = SystemTray.getSystemTray();
-                // Create a simple blank image for the icon if we don't have one
-                Image image = Toolkit.getDefaultToolkit().createImage(new byte[0]); 
+                Image image = createDefaultIcon();
                 trayIcon = new TrayIcon(image, "Smart Network Monitor");
                 trayIcon.setImageAutoSize(true);
                 tray.add(trayIcon);
             } catch (AWTException e) {
-                System.err.println("[NotificationService] TrayIcon could not be added.");
+                System.err.println("[NotificationService] TrayIcon could not be added: " + e.getMessage());
+            } catch (Exception e) {
+                System.err.println("[NotificationService] SystemTray error: " + e.getMessage());
             }
         }
+    }
+
+    private Image createDefaultIcon() {
+        java.awt.image.BufferedImage img = new java.awt.image.BufferedImage(16, 16, java.awt.image.BufferedImage.TYPE_INT_ARGB);
+        java.awt.Graphics2D g2 = img.createGraphics();
+        g2.setRenderingHint(java.awt.RenderingHints.KEY_ANTIALIASING, java.awt.RenderingHints.VALUE_ANTIALIAS_ON);
+        g2.setColor(new java.awt.Color(13, 110, 253));
+        g2.fillOval(1, 1, 14, 14);
+        g2.setColor(java.awt.Color.WHITE);
+        g2.fillOval(5, 5, 6, 6);
+        g2.dispose();
+        return img;
     }
 
     public static NotificationService getInstance() {

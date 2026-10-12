@@ -57,15 +57,16 @@ public class NetworkDiscoveryService {
             int removed = 0;
             for (Device d : allDevices) {
                 String desc = d.getDescription();
-                // Keep only auto-discovered devices
-                if (desc == null || !desc.contains("Auto-discovered")) {
+                // Only clean legacy dummy seed devices, never user-created devices
+                boolean isLegacySeed = desc != null && (desc.contains("Initial seed device") || desc.contains("Dummy") || desc.contains("Mock"));
+                if (isLegacySeed) {
                     deviceDAO.deleteDevice(d.getDeviceId());
                     removed++;
-                    System.out.println("[NetworkDiscovery] Removed stale device: " + d.getDeviceName() + " (" + d.getIpAddress() + ")");
+                    System.out.println("[NetworkDiscovery] Removed legacy seed device: " + d.getDeviceName() + " (" + d.getIpAddress() + ")");
                 }
             }
             if (removed > 0) {
-                System.out.println("[NetworkDiscovery] Cleaned " + removed + " stale/hardcoded device(s).");
+                System.out.println("[NetworkDiscovery] Cleaned " + removed + " legacy seed device(s).");
             }
         } catch (Exception e) {
             System.err.println("[NetworkDiscovery] Error cleaning stale devices: " + e.getMessage());

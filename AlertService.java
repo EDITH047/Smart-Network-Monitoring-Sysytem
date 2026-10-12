@@ -171,4 +171,16 @@ public class AlertService {
         this.packetLossThreshold = threshold;
         System.out.println("[AlertService] Packet loss threshold set to: " + threshold + "%");
     }
+
+    public double getBandwidthThreshold() {
+        return bandwidthThreshold;
+    }
+
+    public double getLatencyThreshold() {
+        return latencyThreshold;
+    }
+
+    public double getPacketLossThreshold() {
+        return packetLossThreshold;
+    }
 }

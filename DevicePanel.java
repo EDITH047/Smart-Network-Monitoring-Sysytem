@@ -90,8 +90,19 @@ public class DevicePanel extends JPanel {
         deleteButton.addActionListener(e -> showDeleteConfirmation());
         buttonPanel.add(deleteButton);
 
+        JButton subnetScanButton = new JButton("🔍 Subnet Sweep");
+        UITheme.stylePrimaryButton(subnetScanButton);
+        subnetScanButton.setEnabled(isOperatorOrAdmin());
+        subnetScanButton.addActionListener(e -> showSubnetScanDialog());
+        buttonPanel.add(subnetScanButton);
+
+        JButton diagButton = new JButton("🩺 Diagnostics");
+        UITheme.styleNeutralButton(diagButton);
+        diagButton.addActionListener(e -> showDiagnosticsDialog());
+        buttonPanel.add(diagButton);
+
         JButton wifiButton = new JButton("📡 Scan WiFi");
-        UITheme.stylePrimaryButton(wifiButton);
+        UITheme.styleNeutralButton(wifiButton);
         wifiButton.addActionListener(e -> showWifiScanDialog());
         buttonPanel.add(wifiButton);
 
@@ -131,6 +142,38 @@ public class DevicePanel extends JPanel {
         deviceTable.getColumnModel().getColumn(COL_STATUS).setPreferredWidth(100);
 
         deviceTable.getColumnModel().getColumn(COL_STATUS).setCellRenderer(new StatusCellRenderer());
+
+        JPopupMenu popupMenu = new JPopupMenu();
+        JMenuItem diagItem = new JMenuItem("🩺 Network Diagnostics (Port Scan & Ping)");
+        diagItem.addActionListener(e -> showDiagnosticsDialog());
+        JMenuItem editItem = new JMenuItem("✏️ Edit Device");
+        editItem.setEnabled(isOperatorOrAdmin());
+        editItem.addActionListener(e -> showEditDeviceDialog());
+        JMenuItem deleteItem = new JMenuItem("🗑️ Delete Device");
+        deleteItem.setEnabled(isOperatorOrAdmin());
+        deleteItem.addActionListener(e -> showDeleteConfirmation());
+        popupMenu.add(diagItem);
+        popupMenu.addSeparator();
+        popupMenu.add(editItem);
+        popupMenu.add(deleteItem);
+
+        deviceTable.addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override
+            public void mousePressed(java.awt.event.MouseEvent e) {
+                if (e.isPopupTrigger()) showMenu(e);
+            }
+            @Override
+            public void mouseReleased(java.awt.event.MouseEvent e) {
+                if (e.isPopupTrigger()) showMenu(e);
+            }
+            private void showMenu(java.awt.event.MouseEvent e) {
+                int row = deviceTable.rowAtPoint(e.getPoint());
+                if (row >= 0 && row < deviceTable.getRowCount()) {
+                    deviceTable.setRowSelectionInterval(row, row);
+                    popupMenu.show(deviceTable, e.getX(), e.getY());
+                }
+            }
+        });
 
         JScrollPane scrollPane = new JScrollPane(deviceTable);
         scrollPane.setBorder(BorderFactory.createEmptyBorder());
@@ -199,7 +242,8 @@ public class DevicePanel extends JPanel {
             return;
         }
 
-        int deviceId = (Integer) tableModel.getValueAt(selectedRow, COL_ID);
+        int modelRow = deviceTable.convertRowIndexToModel(selectedRow);
+        int deviceId = (Integer) tableModel.getValueAt(modelRow, COL_ID);
         Device device = deviceDAO.getDeviceById(deviceId);
 
         if (device == null) {
@@ -229,8 +273,9 @@ public class DevicePanel extends JPanel {
             return;
         }
 
-        int deviceId = (Integer) tableModel.getValueAt(selectedRow, COL_ID);
-        String deviceName = (String) tableModel.getValueAt(selectedRow, COL_NAME);
+        int modelRow = deviceTable.convertRowIndexToModel(selectedRow);
+        int deviceId = (Integer) tableModel.getValueAt(modelRow, COL_ID);
+        String deviceName = (String) tableModel.getValueAt(modelRow, COL_NAME);
 
         int confirm = JOptionPane.showConfirmDialog(
             this,
@@ -327,6 +372,28 @@ public class DevicePanel extends JPanel {
         refreshBtn.addActionListener(e -> scanTask.run());
         scanTask.run(); // initial scan
 
+        dialog.setVisible(true);
+    }
+
+    private void showSubnetScanDialog() {
+        SubnetScanDialog dialog = new SubnetScanDialog(SwingUtilities.getWindowAncestor(this), currentUser);
+        dialog.setVisible(true);
+        if (dialog.hasImportedDevices()) {
+            loadDevices();
+        }
+    }
+
+    private void showDiagnosticsDialog() {
+        int selectedRow = deviceTable.getSelectedRow();
+        Device targetDevice = null;
+        if (selectedRow != -1) {
+            int modelRow = deviceTable.convertRowIndexToModel(selectedRow);
+            int deviceId = (Integer) tableModel.getValueAt(modelRow, COL_ID);
+            targetDevice = deviceDAO.getDeviceById(deviceId);
+        }
+        NetworkDiagnosticsDialog dialog = new NetworkDiagnosticsDialog(
+            SwingUtilities.getWindowAncestor(this), currentUser, targetDevice
+        );
         dialog.setVisible(true);
     }
 
